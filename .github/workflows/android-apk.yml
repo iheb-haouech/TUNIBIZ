@@ -1,0 +1,49 @@
+name: Build TUNIBIZ Android APK
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/android-apk.yml'
+permissions:
+  contents: read
+concurrency:
+  group: tunibiz-android-test
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.0'
+          channel: stable
+          cache: false
+      - name: Fetch dependencies
+        run: flutter pub get
+      - name: Prepare Android wrapper
+        run: chmod +x android/gradlew
+      - name: Unit and widget tests
+        run: flutter test
+      - name: Build debug APK (ARM64, local API via USB)
+        run: flutter build apk --debug --target-platform android-arm64 --dart-define=API_BASE=http://127.0.0.1:8877
+      - name: Stage and verify package
+        run: |
+          mkdir -p artifacts
+          cp build/app/outputs/flutter-apk/app-debug.apk artifacts/TUNIBIZ-v0.2.0-debug.apk
+          unzip -tq artifacts/TUNIBIZ-v0.2.0-debug.apk
+          sha256sum artifacts/TUNIBIZ-v0.2.0-debug.apk > artifacts/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TUNIBIZ-v0.2.0-debug
+          path: mobile/artifacts/
+          if-no-files-found: error
+          retention-days: 7
