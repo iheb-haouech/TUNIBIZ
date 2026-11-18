@@ -10,6 +10,9 @@ def install(app, db, payload, clean, merchant, err):
   CREATE TABLE IF NOT EXISTS campaigns(id INTEGER PRIMARY KEY,shop_id INTEGER NOT NULL REFERENCES shops(id),title TEXT NOT NULL,description TEXT NOT NULL,segment TEXT NOT NULL,starts TEXT NOT NULL,ends TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1);
   CREATE TABLE IF NOT EXISTS rewards(id INTEGER PRIMARY KEY,shop_id INTEGER NOT NULL REFERENCES shops(id),title TEXT NOT NULL,cost INTEGER NOT NULL CHECK(cost>0),active INTEGER NOT NULL DEFAULT 1);
   """)
+  cols={r['name'] for r in c.execute('PRAGMA table_info(rewards)')}
+  if 'visual' not in cols:c.execute("ALTER TABLE rewards ADD COLUMN visual TEXT NOT NULL DEFAULT 'general'")
+  if 'description' not in cols:c.execute("ALTER TABLE rewards ADD COLUMN description TEXT NOT NULL DEFAULT ''")
  def digest(s):return hashlib.sha256(s.encode()).hexdigest()
  def token():return secrets.token_urlsafe(24)
  def listrows(c,sql,args=()):return [dict(r) for r in c.execute(sql,args)]
@@ -91,9 +94,9 @@ def install(app, db, payload, clean, merchant, err):
   return jsonify(ok=True)
  @app.post('/api/crm/reward')
  def reward():
-  sid=merchant();p=payload();title=clean(p.get('title'));cost=p.get('cost')
-  if not title or type(cost)is not int or not 1<=cost<=100000:return err('Récompense invalide')
-  with db() as c:i=c.execute('INSERT INTO rewards(shop_id,title,cost) VALUES(?,?,?)',(sid,title,cost)).lastrowid
+  sid=merchant();p=payload();title=clean(p.get('title'));cost=p.get('cost');visual=p.get('visual','general');description=clean(p.get('description'),240)
+  if not title or type(cost)is not int or not 1<=cost<=100000 or visual not in ('general','coffee','restaurant','bakery','drinks','shopping'):return err('Récompense invalide')
+  with db() as c:i=c.execute('INSERT INTO rewards(shop_id,title,cost,visual,description) VALUES(?,?,?,?,?)',(sid,title,cost,visual,description)).lastrowid
   return jsonify(id=i),201
  @app.post('/api/crm/redeem')
  def redeem():
@@ -126,7 +129,7 @@ def install(app, db, payload, clean, merchant, err):
    if not row:return err('Connectez votre carte',401)
    a=getcustomer(c,row['shop_id'],row['id']);today=date.today().isoformat()
    cs=[{k:x[k] for k in ('id','title','description','ends')} for x in campaigns(c,row['shop_id']) if a['consent'] and x['active'] and x['starts']<=today<=x['ends'] and segment_ok(a,x['segment'])]
-   rs=[{k:x[k] for k in ('id','title','cost')} for x in rewards(c,row['shop_id']) if x['active']]
+   rs=[{k:x[k] for k in ('id','title','cost','visual','description')} for x in rewards(c,row['shop_id']) if x['active']]
    shop=c.execute('SELECT name FROM shops WHERE id=?',(row['shop_id'],)).fetchone()['name']
    return jsonify(customer={k:a[k] for k in ('name','points','spent','purchases','consent')},shop=shop,campaigns=cs,rewards=rs,history=listrows(c,'SELECT kind,amount,points,label,created FROM loyalty_ledger WHERE customer_id=? ORDER BY id DESC LIMIT 100',(row['id'],)))
  @app.post('/api/loyalty/optout')

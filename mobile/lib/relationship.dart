@@ -4,6 +4,7 @@ import 'api.dart';
 import 'nearby.dart';
 import 'premium.dart';
 import 'loyalty_qr.dart';
+import 'reward_tile.dart';
 
 const navy=Color(0xFF091628), blue=Color(0xFF2563EB), teal=Color(0xFF2DD4BF);
 String money(dynamic v)=>((v as num)/1000).toStringAsFixed(3)+' DT';
@@ -64,7 +65,11 @@ class _WorkspaceState extends State<Workspace>{
  final p=await fields('Nouvelle campagne',{'title':'Titre','description':'Offre et conditions','starts':'Début AAAA-MM-JJ','ends':'Fin AAAA-MM-JJ'},initial:{'starts':now,'ends':now});if(p==null||!mounted)return;
  final seg=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Audience consentante'),children:[for(final e in {'all':'Tous','vip':'VIP (100 DT et plus)','inactive':'Inactifs > 30 jours'}.entries)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,e.key),child:Text(e.value))]));if(seg==null)return;await run(()async{await api.call('/crm/campaign',{...p,'segment':seg});await refresh();});
  }
- Future<void> newReward()async{final p=await fields('Nouvelle récompense',{'title':'Avantage / réduction','cost':'Points requis'});if(p==null)return;await run(()async{await api.call('/crm/reward',{'title':p['title'],'cost':int.tryParse(p['cost']!)??0});await refresh();});}
+ Future<void> newReward()async{
+ final p=await fields('Nouvelle récompense',{'title':'Avantage / réduction','cost':'Points requis','description':'Conditions (facultatives)'},optional:['description']);if(p==null||!mounted)return;
+ final visual=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Choisir un visuel illustratif'),children:[for(final e in rewardVisuals.entries)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,e.key),child:Text(e.value))]));if(visual==null)return;
+ await run(()async{await api.call('/crm/reward',{'title':p['title'],'cost':int.tryParse(p['cost']!)??0,'description':p['description'],'visual':visual});await refresh();});
+ }
  Widget panel(Widget child)=>Card(child:Padding(padding:const EdgeInsets.all(16),child:child));
  Widget metric(String label,String value)=>panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(label),Text(value,style:const TextStyle(fontSize:25,fontWeight:FontWeight.bold))]));
  List<Widget> merchantView(Map<String,dynamic> d)=>[
@@ -92,11 +97,7 @@ class _WorkspaceState extends State<Workspace>{
  Padding(padding:const EdgeInsets.fromLTRB(20,16,20,0),child:FilledButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>LoyaltyQr(api:api,shop:d['shop'].toString()))),icon:const Icon(Icons.qr_code_2),label:const Text('Présenter ma carte QR'))),
  Padding(key:rewardsKey,padding:const EdgeInsets.fromLTRB(20,26,20,12),child:const Text('Vos récompenses',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:ink))),
  if(rewards.isEmpty)const Padding(padding:EdgeInsets.symmetric(horizontal:20),child:Text('Aucune récompense publiée.')),
- for(final r in rewards)Padding(padding:const EdgeInsets.fromLTRB(20,0,20,12),child:Material(color:Colors.white,borderRadius:BorderRadius.circular(18),child:Padding(padding:const EdgeInsets.all(15),child:Row(children:[
- Container(width:60,height:60,decoration:BoxDecoration(color:const Color(0xFFE1F9F5),borderRadius:BorderRadius.circular(15)),child:const Icon(Icons.card_giftcard_rounded,color:ink,size:30)),
- const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(r['title'],style:const TextStyle(fontWeight:FontWeight.w800,fontSize:17,color:ink)),const SizedBox(height:4),Text(points>=r['cost']?'Présentez-vous au commerçant':'Encore '+(r['cost']-points).toString()+' pts',style:const TextStyle(color:muted,fontSize:12))])),
- Chip(label:Text(r['cost'].toString()+' pts'),backgroundColor:const Color(0xFFE1F9F5),side:BorderSide.none)
- ])))),
+ for(final r in rewards)Padding(padding:const EdgeInsets.fromLTRB(20,0,20,16),child:RewardTile(key:ValueKey(r['id']),reward:Map<String,dynamic>.from(r),points:points)),
  const Padding(padding:EdgeInsets.fromLTRB(20,18,20,12),child:Text('Offres pour vous',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:ink))),
  if((d['campaigns'] as List).isEmpty)const Padding(padding:EdgeInsets.symmetric(horizontal:20),child:Text('Aucune offre disponible.')),
  for(final r in d['campaigns'])Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:panel(ListTile(leading:const Icon(Icons.local_offer_outlined,color:cobalt),title:Text(r['title'],style:const TextStyle(fontWeight:FontWeight.bold)),subtitle:Text(r['description']+'\nJusqu’au '+r['ends'])))),

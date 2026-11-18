@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tunibiz_mobile/main.dart';
 import 'package:tunibiz_mobile/premium.dart';
+import 'package:tunibiz_mobile/reward_tile.dart';
 void main(){
  test('amount is formatted in Tunisian dinars',(){expect(money(3500),'3.500 DT');});
  testWidgets('premium home opens loyalty, Nearby and merchant journeys',(tester) async {
@@ -29,5 +30,15 @@ void main(){
   expect(find.text('135'),findsOneWidget);expect(find.text('Objectif 200'),findsOneWidget);
   await tester.tap(find.text('Récompenses'));expect(clicked,isTrue);
   expect(tester.takeException(),isNull);
+ });
+ testWidgets('reward progress and eligibility use real balances',(tester)async{
+  tester.view.physicalSize=const Size(320,640);tester.view.devicePixelRatio=1;
+  addTearDown(tester.view.resetPhysicalSize);addTearDown(tester.view.resetDevicePixelRatio);
+  final r={'title':'Café offert','cost':200,'visual':'coffee','description':'Sur place uniquement'};
+  await tester.pumpWidget(MaterialApp(home:Scaffold(body:RewardTile(reward:r,points:135))));await tester.pumpAndSettle();
+  expect(find.text('Encore 65 points'),findsOneWidget);expect(find.text('68 %'),findsOneWidget);
+  expect(find.text('Photo illustrative'),findsOneWidget);expect(find.text('Sur place uniquement'),findsOneWidget);
+  await tester.pumpWidget(MaterialApp(home:Scaffold(body:RewardTile(reward:r,points:200))));await tester.pumpAndSettle();
+  expect(find.text('DISPONIBLE'),findsOneWidget);expect(find.text('100 %'),findsOneWidget);expect(tester.takeException(),isNull);
  });
 }

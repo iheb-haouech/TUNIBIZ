@@ -16,3 +16,7 @@ flutter:
   assets:
     - assets/restaurant.webp
     - assets/cafe.webp
+    - assets/croissant.webp
+    - assets/lemonade.webp
+    - assets/boutique.webp
+    - assets/espresso.webp
