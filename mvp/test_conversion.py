@@ -8,9 +8,9 @@ try:
   except Exception:b=p.chromium.launch(channel='msedge',headless=True)
   page=b.new_page(viewport={'width':1440,'height':1000});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
   page.goto('http://127.0.0.1:8877/');page.locator('#leadform').wait_for()
-  assert page.locator('#visits').inner_text()=='7'
-  page.locator('#basket').evaluate("(e)=>{e.value=20;e.dispatchEvent(new Event('input'))}")
   assert page.locator('#visits').inner_text()=='4'
+  page.locator('#basket').evaluate("(e)=>{e.value=20;e.dispatchEvent(new Event('input'))}")
+  assert page.locator('#visits').inner_text()=='3'
   for lang in ['en','ar','fr']:
    page.locator('header select').select_option(lang);page.locator('#leadform').wait_for();assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
   for field,val in {'business':name,'contact':'QA','phone':'00000000','city':'Tunis'}.items():page.locator('#leadform input[name='+field+']').fill(val)

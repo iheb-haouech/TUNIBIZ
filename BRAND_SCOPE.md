@@ -4,3 +4,5 @@ Fiches clients, consentement, segmentation, campagnes ciblées, carte client, po
 Le site commercial et le mobile doivent présenter ces deux piliers. Le menu, les commandes et les réservations historiques restent conservés en code mais ne constituent plus les services commerciaux principaux.
 FR / EN / AR pour la vitrine; espaces fonctionnels en français au stade MVP.
 Identité: bleu marine #091628, bleu #2563EB, turquoise #2DD4BF. Slogan: Your Business. Smarter.
+
+Offre unique 19 DT/mois pour toutes les fonctionnalités. Nearby : promotions dans un rayon de 1 km, découverte volontaire, calcul local sur le téléphone. Alertes Android uniquement pendant la session active, consentement distinct et 3 par jour maximum. Pas de traçage ni de données de position envoyées au serveur. Pas de collecte en arrière-plan.

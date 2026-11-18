@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'api.dart';
+import 'nearby.dart';
 
 const navy=Color(0xFF091628), blue=Color(0xFF2563EB), teal=Color(0xFF2DD4BF);
 String money(dynamic v)=>((v as num)/1000).toStringAsFixed(3)+' DT';
@@ -16,6 +17,7 @@ class Home extends StatelessWidget{
   Container(padding:const EdgeInsets.all(25),decoration:BoxDecoration(color:navy,borderRadius:BorderRadius.circular(24)),child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('MARKETING & FIDÉLITÉ',style:TextStyle(color:teal,fontWeight:FontWeight.bold)),SizedBox(height:15),Text('Des clients qui reviennent.',style:TextStyle(color:Colors.white,fontSize:34,fontWeight:FontWeight.bold)),SizedBox(height:12),Text('Pour tous les commerces de Tunisie.',style:TextStyle(color:Colors.white70))])),
   const SizedBox(height:20),FilledButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const Workspace(merchant:true))),icon:const Icon(Icons.people_outline),label:const Text('Espace commerçant')),
   const SizedBox(height:10),OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const Workspace(merchant:false))),icon:const Icon(Icons.card_membership),label:const Text('Ma carte fidélité')),
+  const SizedBox(height:10),OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const Nearby())),icon:const Icon(Icons.radar),label:const Text('Offres autour de moi')),
   const SizedBox(height:15),const Text('Prototype local. Aucun message externe envoyé.',textAlign:TextAlign.center)]));
 }
 class Workspace extends StatefulWidget{final bool merchant;const Workspace({super.key,required this.merchant});@override State<Workspace> createState()=>_WorkspaceState();}
