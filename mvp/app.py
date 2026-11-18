@@ -57,7 +57,7 @@ def merchant_identity():
  token=session.get('merchant_token')
  if not isinstance(token,str):return None
  with db() as c:
-  u=c.execute('SELECT u.shop_id FROM merchant_sessions s JOIN users u ON u.id=s.user_id WHERE s.digest=? AND s.expires>?',(merchant_digest(token),int(time.time()))).fetchone()
+  u=c.execute("SELECT u.shop_id FROM merchant_sessions s JOIN users u ON u.id=s.user_id JOIN subscriptions t ON t.shop_id=u.shop_id WHERE s.digest=? AND s.expires>? AND t.status='active' AND t.paid_until>date('now','+1 hour')",(merchant_digest(token),int(time.time()))).fetchone()
  return u['shop_id'] if u else None
 def merchant():
  sid=merchant_identity()
@@ -73,7 +73,7 @@ def csrf():
  if request.method=='POST' and (not session.get('csrf') or not secrets.compare_digest(request.headers.get('X-CSRF-Token',''),session['csrf'])):return err('Session invalide, rechargez la page',403)
 @app.after_request
 def security(r):
- r.headers['X-Content-Type-Options']='nosniff';r.headers['Referrer-Policy']='strict-origin-when-cross-origin' if request.path=='/nearby' else 'same-origin';r.headers['X-Frame-Options']='DENY'
+ r.headers['X-Content-Type-Options']='nosniff';r.headers['Referrer-Policy']='strict-origin-when-cross-origin' if request.path in ('/nearby','/merchant-register') else 'same-origin';r.headers['X-Frame-Options']='DENY'
  if PRODUCTION:r.headers['Strict-Transport-Security']='max-age=31536000'
  if request.path.startswith('/api'):r.headers['Cache-Control']='no-store'
  return r
@@ -100,6 +100,8 @@ def login():
  p=payload()
  with db() as c:u=c.execute('SELECT * FROM users WHERE email=?',(clean(p.get('email')).lower(),)).fetchone()
  if not u or not check_password_hash(u['password'],str(p.get('password',''))[:200]):return err('Identifiants incorrects',401)
+ with db() as c:
+  if not c.execute("SELECT 1 FROM subscriptions WHERE shop_id=? AND status='active' AND paid_until>date('now','+1 hour')",(u['shop_id'],)).fetchone():return err('Compte en attente, bloque ou abonnement expire. Contactez TUNIBIZ.',403)
  token=secrets.token_urlsafe(32);old=session.get('merchant_token');now=int(time.time())
  with db() as c:
   c.execute('DELETE FROM merchant_sessions WHERE expires<=?',(now,))
@@ -117,7 +119,7 @@ def logout():
 @app.get('/api/menu/<slug>')
 def menu(slug):
  with db() as c:
-  shop=c.execute('SELECT * FROM shops WHERE slug=?',(slug,)).fetchone()
+  shop=c.execute("SELECT s.* FROM shops s JOIN subscriptions t ON t.shop_id=s.id WHERE s.slug=? AND t.status='active' AND t.paid_until>date('now','+1 hour')",(slug,)).fetchone()
   if not shop:return err('Commerce introuvable',404)
   return jsonify(shop=dict(shop),items=rows(c,'SELECT id,name,category,price FROM items WHERE shop_id=? AND active=1 ORDER BY category,id',(shop['id'],)))
 @app.post('/api/menu/<slug>/order')
@@ -125,7 +127,7 @@ def order(slug):
  p=payload();cart=p.get('cart');name=clean(p.get('customer'));table=clean(p.get('table'),20)
  if not name or not isinstance(cart,list) or not 1<=len(cart)<=30:return err('Nom et panier requis')
  with db() as c:
-  shop=c.execute('SELECT id FROM shops WHERE slug=?',(slug,)).fetchone()
+  shop=c.execute("SELECT s.id FROM shops s JOIN subscriptions t ON t.shop_id=s.id WHERE s.slug=? AND t.status='active' AND t.paid_until>date('now','+1 hour')",(slug,)).fetchone()
   if not shop:return err('Commerce introuvable',404)
   lines=[];total=0;seen=set()
   for x in cart:
@@ -145,7 +147,7 @@ def reserve(slug):
  except ValueError:return err('Date ou heure incorrecte')
  if not name or not re.fullmatch(r'[+0-9 ()-]{8,25}',phone) or type(guests)is not int or not 1<=guests<=30:return err('Vérifiez les informations')
  with db() as c:
-  shop=c.execute('SELECT id FROM shops WHERE slug=?',(slug,)).fetchone()
+  shop=c.execute("SELECT s.id FROM shops s JOIN subscriptions t ON t.shop_id=s.id WHERE s.slug=? AND t.status='active' AND t.paid_until>date('now','+1 hour')",(slug,)).fetchone()
   if not shop:return err('Commerce introuvable',404)
   oid=c.execute('INSERT INTO reservations(shop_id,customer,phone,day,slot,guests) VALUES(?,?,?,?,?,?)',(shop['id'],name,phone,day,slot,guests)).lastrowid
  return jsonify(id=oid,status='pending'),201
@@ -190,6 +192,10 @@ from loyalty_qr import install as install_qr
 install_qr(app,db,payload,merchant,err)
 from wallet import install as install_wallet
 install_wallet(app,db,payload,clean,err)
+from subscriptions import install as install_subscriptions
+install_subscriptions(app,db,payload,clean,err,throttle,PRODUCTION)
+from google_identity import install as install_google
+install_google(app,db,payload,err,throttle)
 if __name__=='__main__':
  if PRODUCTION:raise RuntimeError('Use a production WSGI server, not Flask development server')
  print('TUNIBIZ local preview: http://127.0.0.1:8877',flush=True)

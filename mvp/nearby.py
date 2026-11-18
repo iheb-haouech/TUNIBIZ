@@ -17,14 +17,14 @@ def install(app,db,payload,clean,merchant,err):
  def nearby():
   today=date.today().isoformat()
   with db() as c:
-   offers=[dict(r) for r in c.execute("""SELECT o.id,s.name shop,l.lat,l.lon,l.address,o.title,o.description,o.ends,o.category,1000 radius FROM nearby_offers o JOIN nearby_locations l ON o.shop_id=l.shop_id JOIN shops s ON s.id=o.shop_id WHERE o.active=1 AND o.starts<=? AND o.ends>=? ORDER BY o.id DESC""",(today,today))]
+   offers=[dict(r) for r in c.execute("""SELECT o.id,s.name shop,l.lat,l.lon,l.address,o.title,o.description,o.ends,o.category,COALESCE(o.radius_override,t.radius) radius FROM nearby_offers o JOIN nearby_locations l ON o.shop_id=l.shop_id JOIN shops s ON s.id=o.shop_id JOIN subscriptions t ON t.shop_id=s.id WHERE t.status='active' AND t.paid_until>date('now','+1 hour') AND l.location_confirmed=1 AND o.active=1 AND o.starts<=? AND o.ends>=? ORDER BY o.id DESC""",(today,today))]
   return jsonify(offers=offers)
  @app.get('/api/nearby/business')
  def nearby_business():
   sid=merchant()
   with db() as c:
    loc=c.execute('SELECT lat,lon,address FROM nearby_locations WHERE shop_id=?',(sid,)).fetchone()
-   return jsonify(location=dict(loc) if loc else None,offers=[dict(r) for r in c.execute('SELECT id,title,description,starts,ends,active,category FROM nearby_offers WHERE shop_id=? ORDER BY id DESC',(sid,))],radius=1000)
+   return jsonify(location=dict(loc) if loc else None,offers=[dict(r) for r in c.execute('SELECT id,title,description,starts,ends,active,category,radius_override FROM nearby_offers WHERE shop_id=? ORDER BY id DESC',(sid,))],radius=c.execute('SELECT radius FROM subscriptions WHERE shop_id=?',(sid,)).fetchone()[0])
  @app.post('/api/nearby/location')
  def nearby_location():
   sid=merchant();p=payload()
@@ -34,7 +34,7 @@ def install(app,db,payload,clean,merchant,err):
   except (KeyError,TypeError,ValueError):return err('Coordonnées du commerce invalides (Tunisie)')
   address=clean(p.get('address'),180)
   if not address:return err('Adresse requise')
-  with db() as c:c.execute('INSERT INTO nearby_locations(shop_id,lat,lon,address) VALUES(?,?,?,?) ON CONFLICT(shop_id) DO UPDATE SET lat=excluded.lat,lon=excluded.lon,address=excluded.address',(sid,lat,lon,address))
+  with db() as c:c.execute('INSERT INTO nearby_locations(shop_id,lat,lon,address,location_confirmed) VALUES(?,?,?,?,1) ON CONFLICT(shop_id) DO UPDATE SET lat=excluded.lat,lon=excluded.lon,address=excluded.address,location_confirmed=1',(sid,lat,lon,address))
   return jsonify(ok=True)
  @app.post('/api/nearby/offer')
  def nearby_offer():

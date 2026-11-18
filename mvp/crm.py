@@ -138,8 +138,9 @@ def install(app, db, payload, clean, merchant, err):
    row=c.execute('SELECT id,shop_id FROM crm_customers WHERE id=? AND code_hash=?',(session.get('card'),session.get('card_hash'))).fetchone()
    if not row:return err('Connectez votre carte',401)
    a=getcustomer(c,row['shop_id'],row['id']);today=date.today().isoformat()
-   cs=[{k:x[k] for k in ('id','title','description','ends')} for x in campaigns(c,row['shop_id']) if a['consent'] and x['active'] and x['starts']<=today<=x['ends'] and segment_ok(a,x['segment'])]
-   rs=[{k:x[k] for k in ('id','title','cost','visual','description')} for x in rewards(c,row['shop_id']) if x['active']]
+   enabled=c.execute("SELECT 1 FROM subscriptions WHERE shop_id=? AND status='active' AND paid_until>date('now','+1 hour')",(row['shop_id'],)).fetchone()
+   cs=[{k:x[k] for k in ('id','title','description','ends')} for x in campaigns(c,row['shop_id']) if enabled and a['consent'] and x['active'] and x['starts']<=today<=x['ends'] and segment_ok(a,x['segment'])]
+   rs=[{k:x[k] for k in ('id','title','cost','visual','description')} for x in rewards(c,row['shop_id']) if enabled and x['active']]
    shop=c.execute('SELECT name FROM shops WHERE id=?',(row['shop_id'],)).fetchone()['name']
    return jsonify(customer={k:a[k] for k in ('name','points','spent','purchases','consent')},shop=shop,campaigns=cs,rewards=rs,history=listrows(c,'SELECT kind,amount,points,label,created FROM loyalty_ledger WHERE customer_id=? ORDER BY id DESC LIMIT 100',(row['id'],)))
  @app.post('/api/loyalty/optout')

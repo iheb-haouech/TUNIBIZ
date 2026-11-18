@@ -23,6 +23,11 @@ void main(){
   expect(result.map((x)=>x['id']),[2,1]);
   expect(distanceMeters(0,0,0,0),0);expect(distanceMeters(0,0,0,.01),greaterThan(1000));
  });
+ test('admin-configured per-offer radius changes eligibility',(){
+ final items=[{...testOffers.first,'id':11,'radius':100},{...testOffers.first,'id':12,'radius':2000}];
+ final found=nearbyMatches(items,const LatLng(33.88,10.865));
+ expect(found.map((o)=>o['id']),[12]);
+ });
  testWidgets('Nearby defaults to private radar, filters and clears location',(tester)async{
   tester.view.physicalSize=const Size(390,844);tester.view.devicePixelRatio=1;
   addTearDown(tester.view.resetPhysicalSize);addTearDown(tester.view.resetDevicePixelRatio);

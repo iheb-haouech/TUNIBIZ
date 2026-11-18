@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'api.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'premium.dart';
 
 typedef CardBuilder = Widget Function(Api api,Map<String,dynamic> data);
+Future<void>? googleInitialization;
 class ConsumerWallet extends StatefulWidget{
  final CardBuilder cardBuilder;final Api? apiOverride;
  const ConsumerWallet({super.key,required this.cardBuilder,this.apiOverride});
@@ -23,6 +25,16 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  if(!email.text.contains('@')||password.text.isEmpty||(registering&&(name.text.trim().isEmpty||password.text.length<12))){setState(()=>message='Vérifiez vos informations. Nouveau compte : 12 caractères minimum.');return;}
  await run(()async{await api.init();await api.call(registering?'/wallet/register':'/wallet/login',{'name':name.text.trim(),'email':email.text.trim(),'password':password.text});password.clear();await refresh();});
  }
+ Future<void> signInGoogle()async=>run(()async{
+ if(!baseUrl.startsWith('https://'))throw Exception('Connexion Google disponible avec le serveur HTTPS configure.');
+ await api.init();final cfg=await api.call('/google/config');
+ if(cfg['enabled']!=true)throw Exception('Connexion Google non configuree.');
+ final google=GoogleSignIn.instance;
+ await (googleInitialization??=google.initialize(serverClientId:cfg['client_id'] as String));
+ final user=await google.authenticate();final token=user.authentication.idToken;
+ if(token==null)throw Exception('Jeton Google indisponible');
+ await api.call('/google/login',{'id_token':token});await refresh();
+ });
  Future<void> addCard()async{
  final code=await showDialog<String>(context:context,builder:(ctx){String value='';return AlertDialog(title:const Text('Ajouter une carte'),content:TextField(autocorrect:false,obscureText:true,onChanged:(v)=>value=v,decoration:const InputDecoration(labelText:'Code personnel remis par le commerce',helperText:'Ce code est différent du QR temporaire.')),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,value.trim()),child:const Text('Ajouter'))]);});
  if(!mounted||code==null||code.isEmpty)return;
@@ -41,9 +53,10 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  }
  Future<void> logout()async=>run(()async{await api.call('/wallet/logout',{});if(mounted)setState(()=>data=null);});
  Future<void> deleteAccount()async{
- final pw=await showDialog<String>(context:context,builder:(ctx){String value='';return AlertDialog(title:const Text('Supprimer mon compte'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[const Text('Action irreversible : profil, sessions et cartes rattachees seront supprimes ou anonymises. Les transactions sans nom ou telephone restent dans les registres des commerces. Les points rattaches ne seront plus accessibles.'),const SizedBox(height:12),TextField(obscureText:true,onChanged:(v)=>value=v,decoration:const InputDecoration(labelText:'Confirmer le mot de passe'))])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,value),child:const Text('Supprimer definitivement'))]);});
- if(!mounted||pw==null||pw.isEmpty)return;
- await run(()async{await api.call('/wallet/delete',{'password':pw});if(mounted)setState((){data=null;message='Compte supprime.';});});
+ final google=data?['profile']?['google_linked']==true;
+ final pw=await showDialog<String>(context:context,builder:(ctx){String value='';return AlertDialog(title:const Text('Supprimer mon compte'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[const Text('Action irreversible : profil, sessions et cartes rattachees seront supprimes ou anonymises. Les transactions sans nom ou telephone restent dans les registres des commerces. Les points rattaches ne seront plus accessibles.'),const SizedBox(height:12),if(google)const Text('Une connexion Google recente est requise (5 minutes).')else TextField(obscureText:true,onChanged:(v)=>value=v,decoration:const InputDecoration(labelText:'Confirmer le mot de passe'))])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,value),child:const Text('Supprimer definitivement'))]);});
+ if(!mounted||pw==null||(!google&&pw.isEmpty))return;
+ await run(()async{await api.call('/wallet/delete',{'password':pw,'confirm_google':google});if(mounted)setState((){data=null;message='Compte supprime.';});});
  }
  Widget login()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
  Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(gradient:const LinearGradient(colors:[ink,Color(0xFF174158)]),borderRadius:BorderRadius.circular(23)),child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(Icons.account_balance_wallet_outlined,color:mint,size:40),SizedBox(height:18),Text('Toutes vos cartes. Un seul compte.',style:TextStyle(fontSize:31,fontWeight:FontWeight.w800,color:Colors.white)),SizedBox(height:10),Text('Gardez les points de chaque commerce, gratuitement.',style:TextStyle(color:Colors.white70))])),
@@ -52,6 +65,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  TextField(controller:email,keyboardType:TextInputType.emailAddress,autocorrect:false,decoration:const InputDecoration(labelText:'Email')),const SizedBox(height:10),
  TextField(controller:password,obscureText:true,decoration:InputDecoration(labelText:'Mot de passe',helperText:registering?'12 caractères minimum':null)),const SizedBox(height:15),
  FilledButton(onPressed:busy?null:signIn,child:Text(registering?'Créer mon portefeuille':'Se connecter')),
+ OutlinedButton.icon(onPressed:busy?null:signInGoogle,icon:const Icon(Icons.account_circle_outlined),label:const Text('Continuer avec Google')),
  TextButton(onPressed:busy?null:()=>setState((){registering=!registering;message='';password.clear();}),child:Text(registering?'J’ai déjà un compte':'Créer un compte gratuit')),
  const Text('Prototype : vérification d’email et récupération du mot de passe non disponibles.',style:TextStyle(color:muted,fontSize:12))
  ]);
@@ -68,6 +82,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  const SizedBox(height:10),const Text('Mes commerces',style:TextStyle(color:ink,fontSize:24,fontWeight:FontWeight.w800)),const Text('Les points ne sont pas transférables entre commerces.',style:TextStyle(color:muted,fontSize:12)),
  if(cards.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:30),child:Center(child:Text('Aucune carte. Demandez votre code au commerçant.'))),
  for(final card in cards)Padding(padding:const EdgeInsets.only(top:12),child:WalletCard(card:Map<String,dynamic>.from(card),onOpen:busy?null:()=>selectCard(card['id'] as int),onRemove:busy?null:()=>unlink(card['id'] as int))),
+ if(profile['google_linked']==true)TextButton(onPressed:busy?null:signInGoogle,child:const Text('Reconnexion Google')),
  const SizedBox(height:28),TextButton(onPressed:busy?null:deleteAccount,child:const Text('Supprimer mon compte',style:TextStyle(color:Colors.red))),
  ]);
  }

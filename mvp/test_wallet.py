@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 P=Path(__file__).parent
 with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  p=Path(tmp)
- for name in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py','merchant_dashboard.py']:shutil.copy2(P/name,p/name)
+ for name in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py','merchant_dashboard.py','subscriptions.py','google_identity.py']:shutil.copy2(P/name,p/name)
  shutil.copytree(P/'static',p/'static')
  server=subprocess.Popen([sys.executable,'-c',"from app import app;app.run(host='127.0.0.1',port=8879,debug=False)"],cwd=p,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  url='http://127.0.0.1:8879'
@@ -25,6 +25,7 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
   pw=re.search(r'Mot de passe: (.+)',(p/'data/demo-login.txt').read_text(encoding='utf-8')).group(1).strip()
   with sqlite3.connect(p/'data/tunibiz.sqlite') as c:
    sid=c.execute("INSERT INTO shops(slug,name,city) VALUES('qa-second','QA Second','Tunisie')").lastrowid
+   c.execute("INSERT INTO subscriptions(shop_id,status,paid_until) VALUES(?,'active','2099-12-31')",(sid,))
    c.execute("INSERT INTO users(shop_id,email,password) VALUES(?,?,?)",(sid,'second@example.test',generate_password_hash('Second-test-password')))
   m1,m2=client(),client();post(m1,'/login',{'email':'demo@tunibiz.local','password':pw});post(m2,'/login',{'email':'second@example.test','password':'Second-test-password'})
   cards=[]
@@ -59,7 +60,7 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
    try:browser=w.chromium.launch(headless=True)
    except Exception:browser=w.chromium.launch(channel='msedge',headless=True)
    page=browser.new_page(viewport={'width':390,'height':844});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-   page.goto(url+'/crm');page.locator('[name=password]').fill(pw);page.locator('#login button').click()
+   page.goto(url+'/crm');page.locator('[name=email]').fill('demo@tunibiz.local');page.locator('[name=password]').fill(pw);page.locator('#login button').click()
    page.locator('.business-hero').wait_for();assert page.locator('.business-bar').count()==7
    assert page.locator('.business-amount').inner_text()=='135.000 DT'
    page.locator('[data-period="30"]').click();assert page.locator('.business-bar').count()==30

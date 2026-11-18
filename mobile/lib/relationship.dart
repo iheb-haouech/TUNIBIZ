@@ -8,6 +8,7 @@ import 'reward_tile.dart';
 import 'wallet.dart';
 import 'business_dashboard.dart';
 import 'checkout_scanner.dart';
+import 'merchant_enrollment.dart';
 
 const navy=Color(0xFF091628), blue=Color(0xFF2563EB), teal=Color(0xFF2DD4BF);
 String money(dynamic v)=>((v as num)/1000).toStringAsFixed(3)+' DT';
@@ -26,7 +27,7 @@ class Home extends StatelessWidget{
  @override Widget build(BuildContext context)=>Scaffold(backgroundColor:paper,body:SafeArea(bottom:false,child:ListView(padding:EdgeInsets.zero,children:[
  PremiumHero(name:'Bienvenue.',shop:'Vos commerces. Vos avantages.',description:'Connectez votre carte pour suivre vos points et découvrir vos récompenses.',action:'Ma carte fidélité',points:0,goal:100,signedIn:false,onAction:()=>open(context,1)),
  Padding(padding:const EdgeInsets.fromLTRB(20,26,20,6),child:Row(children:[const Expanded(child:Text('À découvrir',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:ink))),TextButton(onPressed:()=>open(context,2),child:const Text('Nearby'))])),
- Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:FeatureTile(asset:'assets/restaurant.webp',title:'De bonnes adresses, tout près',subtitle:'Explorez les offres actives dans un rayon de 1 km.',tag:'NEARBY',onTap:()=>open(context,2))),
+ Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:FeatureTile(asset:'assets/restaurant.webp',title:'De bonnes adresses, tout près',subtitle:'Explorez les offres actives dans les zones configurées.',tag:'NEARBY',onTap:()=>open(context,2))),
  const SizedBox(height:18),
  Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:FeatureTile(asset:'assets/cafe.webp',title:'Vos habitudes ont de la valeur',subtitle:'Retrouvez vos avantages et récompenses chez les commerces partenaires.',tag:'FIDÉLITÉ',onTap:()=>open(context,1))),
  Padding(padding:const EdgeInsets.all(20),child:OutlinedButton.icon(onPressed:()=>open(context,3),icon:const Icon(Icons.storefront_outlined),label:const Text('Espace commerçant'))),
@@ -35,7 +36,7 @@ class Home extends StatelessWidget{
 }
 class Workspace extends StatefulWidget{final bool merchant;final Api? sharedApi;final Map<String,dynamic>? initialData;const Workspace({super.key,required this.merchant,this.sharedApi,this.initialData});@override State<Workspace> createState()=>_WorkspaceState();}
 class _WorkspaceState extends State<Workspace>{
- final scroll=ScrollController();late final Api api=widget.sharedApi??Api();final email=TextEditingController(text:'demo@tunibiz.local'),secret=TextEditingController();Map<String,dynamic>? data;String message='';bool busy=false;int tab=0;
+ final scroll=ScrollController();late final Api api=widget.sharedApi??Api();final email=TextEditingController(),secret=TextEditingController();Map<String,dynamic>? data;String message='';bool busy=false;int tab=0;
  @override void initState(){super.initState();data=widget.initialData;}
  @override void dispose(){scroll.dispose();email.dispose();secret.dispose();if(widget.sharedApi==null)api.close();super.dispose();}
  Future<void> run(Future<void> Function() task)async{if(busy)return;setState((){busy=true;message='';});try{await task();}catch(e){if(mounted)setState(()=>message=e.toString());}finally{if(mounted)setState(()=>busy=false);}}
@@ -114,7 +115,7 @@ class _WorkspaceState extends State<Workspace>{
  ]else if(tab==4)...[
  const Text('Nearby Business',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:ink)),
  FilledButton.icon(onPressed:busy?null:manageNearby,icon:const Icon(Icons.radar),label:const Text('Gérer les promotions et la localisation')),
- const Text('Rayon 1 km · aucune position individuelle des visiteurs.')
+ const Text('Rayons configurés · aucune position individuelle des visiteurs.')
  ]];
  List<Widget> cardView(Map<String,dynamic> d){final c=d['customer'];final points=(c['points'] as num).toInt();final rewards=(d['rewards'] as List).toList()..sort((a,b)=>(a['cost'] as num).compareTo(b['cost'] as num));final next=rewards.where((r)=>(r['cost'] as num)>points).toList();
  final goal=next.isNotEmpty?(next.first['cost'] as num).toInt():rewards.isNotEmpty?(rewards.last['cost'] as num).toInt():100;
@@ -129,12 +130,12 @@ class _WorkspaceState extends State<Workspace>{
  const Padding(padding:EdgeInsets.fromLTRB(20,18,20,12),child:Text('Offres pour vous',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:ink))),
  if((d['campaigns'] as List).isEmpty)const Padding(padding:EdgeInsets.symmetric(horizontal:20),child:Text('Aucune offre disponible.')),
  for(final r in d['campaigns'])Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:panel(ListTile(leading:const Icon(Icons.local_offer_outlined,color:cobalt),title:Text(r['title'],style:const TextStyle(fontWeight:FontWeight.bold)),subtitle:Text(r['description']+'\nJusqu’au '+r['ends'])))),
- Padding(padding:const EdgeInsets.all(20),child:FeatureTile(asset:'assets/restaurant.webp',title:'Explorez les offres proches',subtitle:'Découverte volontaire · Rayon de 1 km',tag:'NEARBY',onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const Nearby())))),
+ Padding(padding:const EdgeInsets.all(20),child:FeatureTile(asset:'assets/restaurant.webp',title:'Explorez les offres proches',subtitle:'Découverte volontaire · Rayons configurés',tag:'NEARBY',onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const Nearby())))),
  Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:Text(money(c['spent'])+' d’achats enregistrés',style:const TextStyle(color:muted))),
  if(c['consent']==1)TextButton(onPressed:busy?null:()=>run(()async{await api.call('/loyalty/optout',{});await refresh();}),child:const Text('Ne plus recevoir les offres')),
  const Padding(padding:EdgeInsets.fromLTRB(20,18,20,12),child:Text('Historique',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800))),
  for(final r in d['history'])Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:panel(ListTile(title:Text(r['label']),subtitle:Text(r['created']),trailing:Text(r['points'].toString()+' pts')))),
  const SizedBox(height:24)
  ];}
- @override Widget build(BuildContext context){final d=data;return Scaffold(appBar:AppBar(title:Text(widget.merchant?'TUNIBIZ Business':'TUNIBIZ Loyalty'),actions:d==null?[]:[IconButton(onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),IconButton(onPressed:busy?null:logout,icon:const Icon(Icons.logout))]),bottomNavigationBar:widget.merchant&&d!=null?NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const [NavigationDestination(icon:Icon(Icons.dashboard_outlined),label:'Accueil'),NavigationDestination(icon:Icon(Icons.people_outline),label:'Clients'),NavigationDestination(icon:Icon(Icons.campaign_outlined),label:'Campagnes'),NavigationDestination(icon:Icon(Icons.card_giftcard),label:'Avantages'),NavigationDestination(icon:Icon(Icons.radar),label:'Nearby')]):null,body:ListView(controller:scroll,padding:!widget.merchant&&d!=null?EdgeInsets.zero:const EdgeInsets.all(16),children:[if(busy)const LinearProgressIndicator(),if(message.isNotEmpty)Text(message,style:const TextStyle(color:Colors.red)),if(d==null)...[const SizedBox(height:25),Text(widget.merchant?'Connexion commerçant':'Connectez votre carte',style:const TextStyle(fontSize:28,fontWeight:FontWeight.bold)),const SizedBox(height:15),if(widget.merchant)...[TextField(controller:email,decoration:const InputDecoration(labelText:'Email')),const SizedBox(height:10)],TextField(controller:secret,obscureText:true,decoration:InputDecoration(labelText:widget.merchant?'Mot de passe':'Code personnel')),const SizedBox(height:15),FilledButton(onPressed:busy?null:signIn,child:const Text('Se connecter'))]else ...(widget.merchant?merchantView(d):cardView(d))]));}
+ @override Widget build(BuildContext context){final d=data;return Scaffold(appBar:AppBar(title:Text(widget.merchant?'TUNIBIZ Business':'TUNIBIZ Loyalty'),actions:d==null?[]:[IconButton(onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),IconButton(onPressed:busy?null:logout,icon:const Icon(Icons.logout))]),bottomNavigationBar:widget.merchant&&d!=null?NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const [NavigationDestination(icon:Icon(Icons.dashboard_outlined),label:'Accueil'),NavigationDestination(icon:Icon(Icons.people_outline),label:'Clients'),NavigationDestination(icon:Icon(Icons.campaign_outlined),label:'Campagnes'),NavigationDestination(icon:Icon(Icons.card_giftcard),label:'Avantages'),NavigationDestination(icon:Icon(Icons.radar),label:'Nearby')]):null,body:ListView(controller:scroll,padding:!widget.merchant&&d!=null?EdgeInsets.zero:const EdgeInsets.all(16),children:[if(busy)const LinearProgressIndicator(),if(message.isNotEmpty)Text(message,style:const TextStyle(color:Colors.red)),if(d==null)...[const SizedBox(height:25),Text(widget.merchant?'Connexion commerçant':'Connectez votre carte',style:const TextStyle(fontSize:28,fontWeight:FontWeight.bold)),const SizedBox(height:15),if(widget.merchant)...[TextField(controller:email,decoration:const InputDecoration(labelText:'Email')),const SizedBox(height:10)],TextField(controller:secret,obscureText:true,decoration:InputDecoration(labelText:widget.merchant?'Mot de passe':'Code personnel')),const SizedBox(height:15),FilledButton(onPressed:busy?null:signIn,child:const Text('Se connecter')),if(widget.merchant)TextButton(onPressed:busy?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const MerchantEnrollment())),child:const Text('Inscrire mon établissement'))]else ...(widget.merchant?merchantView(d):cardView(d))]));}
 }

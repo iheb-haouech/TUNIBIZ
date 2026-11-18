@@ -18,7 +18,7 @@ double distanceMeters(double a,double b,double c,double d){
 List<Map<String,dynamic>> nearbyMatches(List items,LatLng p){
  final out=<Map<String,dynamic>>[];
  for(final raw in items){if(raw is! Map)continue;final a=raw['lat'],b=raw['lon'];if(a is! num||b is! num||!a.isFinite||!b.isFinite||a.abs()>90||b.abs()>180)continue;
- final d=distanceMeters(p.latitude,p.longitude,a.toDouble(),b.toDouble());if(d<=1000){out.add({...Map<String,dynamic>.from(raw),'distance':d});}}
+ final d=distanceMeters(p.latitude,p.longitude,a.toDouble(),b.toDouble());final radius=raw['radius'];if(d<=(radius is num?radius.clamp(100,10000):1000)){out.add({...Map<String,dynamic>.from(raw),'distance':d});}}
  out.sort((a,b)=>(a['distance'] as double).compareTo(b['distance'] as double));return out;
 }
 class Nearby extends StatefulWidget{
@@ -30,7 +30,7 @@ class _NearbyState extends State<Nearby> with WidgetsBindingObserver{
  late final api=widget.apiOverride??Api();static const channel=MethodChannel('tn.tunibiz/nearby');
  final map=MapController();Timer? timer;bool enabled=false,alerts=false,busy=false,visible=true,baseMap=false,mapReady=false;
  LatLng? position; double? accuracy; int generation=0;
- String category='all',status='Activez la découverte pour voir les offres à moins de 1 km.';
+ String category='all',status='Activez la découverte pour voir les offres dans votre zone.';
  List<Map<String,dynamic>> matches=[];
  List<Map<String,dynamic>> get filtered=>matches.where((o)=>category=='all'||(o['category']??'general')==category).toList();
  List<List<Map<String,dynamic>>> get grouped{
@@ -52,7 +52,7 @@ class _NearbyState extends State<Nearby> with WidgetsBindingObserver{
  if(p==null)throw Exception('Position indisponible');
  final point=LatLng((p['lat'] as num).toDouble(),(p['lon'] as num).toDouble());
  final found=nearbyMatches(result['offers'] as List,point);
- setState((){position=point;accuracy=(p['accuracy'] as num?)?.toDouble();matches=found;status=found.isEmpty?'Aucune offre active dans un rayon de 1 km.':found.length.toString()+' offre(s) à proximité.';});
+ setState((){position=point;accuracy=(p['accuracy'] as num?)?.toDouble();matches=found;status=found.isEmpty?'Aucune offre active dans votre zone.':found.length.toString()+' offre(s) à proximité.';});
  if(alerts&&visible){for(final o in found){if(!mounted||!enabled||g!=generation||!visible||!alerts)break;await channel.invokeMethod('alert',{'id':o['id'].toString(),'title':o['title'],'body':o['shop'].toString()+' · '+(o['distance'] as double).round().toString()+' m environ'});}}
  }catch(e){if(mounted&&g==generation){mapReady=false;setState((){position=null;matches=[];baseMap=false;status='Localisation ou serveur indisponible. Réessayez.';});}}
  finally{if(mounted)setState(()=>busy=false);}
@@ -83,20 +83,20 @@ class _NearbyState extends State<Nearby> with WidgetsBindingObserver{
  final o=group.first;return Marker(point:LatLng((o['lat'] as num).toDouble(),(o['lon'] as num).toDouble()),width:44,height:44,child:Semantics(button:true,label:group.length==1?o['title'].toString():group.length.toString()+' offres',child:GestureDetector(onTap:()=>chooseOffer(group),child:Container(alignment:Alignment.center,decoration:BoxDecoration(color:ink,shape:BoxShape.circle,border:Border.all(color:mint,width:2)),child:group.length==1?Icon(categoryIcon(o['category']?.toString()??'general'),color:Colors.white,size:22):Text(group.length.toString(),style:const TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.bold))))));
  }
  Widget mapPanel(LatLng p)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
- Row(children:[Expanded(child:Text(baseMap?'Carte des offres':'Radar local · 1 km',style:const TextStyle(fontSize:19,fontWeight:FontWeight.w800,color:ink))),TextButton(onPressed:toggleMap,child:Text(baseMap?'Radar seul':'Afficher les rues'))]),
+ Row(children:[Expanded(child:Text(baseMap?'Carte des offres':'Radar local · rayons variables',style:const TextStyle(fontSize:19,fontWeight:FontWeight.w800,color:ink))),TextButton(onPressed:toggleMap,child:Text(baseMap?'Radar seul':'Afficher les rues'))]),
  ClipRRect(borderRadius:BorderRadius.circular(22),child:ColoredBox(color:const Color(0xFFEAF2F5),child:SizedBox(height:320,child:Stack(children:[
  FlutterMap(mapController:map,options:MapOptions(initialCenter:p,initialZoom:14.6,minZoom:12,maxZoom:18,onMapReady:()=>mapReady=true,interactionOptions:const InteractionOptions(flags:InteractiveFlag.drag|InteractiveFlag.pinchZoom|InteractiveFlag.doubleTapZoom)),children:[
  if(baseMap)TileLayer(urlTemplate:const String.fromEnvironment('NEARBY_TILE_URL',defaultValue:'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),userAgentPackageName:'tn.tunibiz.tunibiz_mobile',panBuffer:0,keepBuffer:0,maxNativeZoom:19),
- CircleLayer(circles:[CircleMarker(point:p,radius:1000,useRadiusInMeter:true,color:cobalt.withValues(alpha:.09),borderColor:cobalt,borderStrokeWidth:2),if(accuracy!=null)CircleMarker(point:p,radius:math.min(accuracy!,1000),useRadiusInMeter:true,color:mint.withValues(alpha:.12),borderColor:mint,borderStrokeWidth:1)]),
+ CircleLayer(circles:[for(final o in filtered)CircleMarker(point:LatLng((o['lat'] as num).toDouble(),(o['lon'] as num).toDouble()),radius:((o['radius'] as num?)??1000).toDouble(),useRadiusInMeter:true,color:cobalt.withValues(alpha:.06),borderColor:cobalt,borderStrokeWidth:1),if(accuracy!=null)CircleMarker(point:p,radius:math.min(accuracy!,1000),useRadiusInMeter:true,color:mint.withValues(alpha:.12),borderColor:mint,borderStrokeWidth:1)]),
  MarkerLayer(markers:[Marker(point:p,width:34,height:34,child:const Icon(Icons.my_location,color:cobalt,size:29)),...grouped.map(groupMarker)]),
  ]),
  Positioned(right:10,top:10,child:Column(children:[FloatingActionButton.small(heroTag:'near-recenter',backgroundColor:Colors.white,onPressed:(){if(mapReady)map.move(p,14.6);},child:const Icon(Icons.my_location,color:ink)),FloatingActionButton.small(heroTag:'near-zoom-in',backgroundColor:Colors.white,onPressed:(){if(mapReady)map.move(map.camera.center,math.min(18,map.camera.zoom+1));},child:const Icon(Icons.add,color:ink)),FloatingActionButton.small(heroTag:'near-zoom-out',backgroundColor:Colors.white,onPressed:(){if(mapReady)map.move(map.camera.center,math.max(12,map.camera.zoom-1));},child:const Icon(Icons.remove,color:ink))])),
- Positioned(left:10,bottom:10,child:Container(padding:const EdgeInsets.all(6),color:Colors.white,child:Text(baseMap?'© OpenStreetMap contributors':'Vous · rayon 1 km',style:const TextStyle(fontSize:10,color:ink))))
+ Positioned(left:10,bottom:10,child:Container(padding:const EdgeInsets.all(6),color:Colors.white,child:Text(baseMap?'© OpenStreetMap contributors':'Vous · zones des offres',style:const TextStyle(fontSize:10,color:ink))))
  ])))),
  const SizedBox(height:6),Text(baseMap?'openstreetmap.org/copyright · Fond externe facultatif':'Radar géographique sans fond de rues · distances à vol d’oiseau',style:const TextStyle(fontSize:11,color:muted))
  ]);
  @override Widget build(BuildContext context)=>Scaffold(backgroundColor:paper,appBar:AppBar(title:const Text('TUNIBIZ Nearby')),body:ListView(padding:const EdgeInsets.all(18),children:[
- Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(gradient:const LinearGradient(colors:[ink,Color(0xFF174158)]),borderRadius:BorderRadius.circular(22)),child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(Icons.radar,color:mint,size:38),SizedBox(height:10),Text('Vos bonnes adresses, tout près.',style:TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w800)),SizedBox(height:8),Text('Promotions dans un rayon de 1 km · localisation volontaire et calcul local.',style:TextStyle(color:Colors.white70))])),
+ Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(gradient:const LinearGradient(colors:[ink,Color(0xFF174158)]),borderRadius:BorderRadius.circular(22)),child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(Icons.radar,color:mint,size:38),SizedBox(height:10),Text('Vos bonnes adresses, tout près.',style:TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w800)),SizedBox(height:8),Text('Promotions dans votre zone · localisation volontaire et calcul local.',style:TextStyle(color:Colors.white70))])),
  const SizedBox(height:12),FilledButton(onPressed:enabled?stop:start,child:Text(enabled?'Désactiver la découverte':'Activer la découverte')),
  if(busy)const LinearProgressIndicator(),
  if(enabled)TextButton(onPressed:busy?null:scan,child:const Text('Actualiser les offres')),

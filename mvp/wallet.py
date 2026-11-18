@@ -34,7 +34,7 @@ def install(app,db,payload,clean,err):
   token=secrets.token_urlsafe(32);now=int(time.time())
   c.execute('DELETE FROM wallet_sessions WHERE expires<=?',(now,))
   c.execute('INSERT INTO wallet_sessions VALUES(?,?,?)',(digest(token),aid,now+7*86400))
-  clear_card();session['wallet_token']=token
+  clear_card();session.pop('google_reauth',None);session['wallet_token']=token
  @app.before_request
  def guard_wallet_selection():
   if not session.get('wallet_card'):return
@@ -71,7 +71,7 @@ def install(app,db,payload,clean,err):
   with db() as c:
    t=session.pop('wallet_token',None)
    if isinstance(t,str):c.execute('DELETE FROM wallet_sessions WHERE digest=?',(digest(t),))
-  clear_card()
+  session.pop('google_reauth',None);clear_card()
   return jsonify(ok=True)
  @app.get('/api/wallet')
  def wallet_view():
@@ -83,10 +83,11 @@ def install(app,db,payload,clean,err):
      FROM loyalty_ledger GROUP BY customer_id)
      SELECT w.customer_id id,s.name shop,s.city,a.name card_name,a.consent,
      COALESCE(b.points,0) points,COALESCE(b.purchases,0) purchases,
-     (SELECT COUNT(*) FROM rewards r WHERE r.shop_id=a.shop_id AND r.active=1 AND r.cost<=COALESCE(b.points,0)) eligible
+     (SELECT COUNT(*) FROM rewards r WHERE r.shop_id=a.shop_id AND r.active=1 AND r.cost<=COALESCE(b.points,0) AND EXISTS (SELECT 1 FROM subscriptions t WHERE t.shop_id=a.shop_id AND t.status='active' AND t.paid_until>date('now','+1 hour'))) eligible
      FROM wallet_cards w JOIN crm_customers a ON a.id=w.customer_id AND a.code_hash=w.card_hash JOIN shops s ON s.id=a.shop_id
      LEFT JOIN balances b ON b.customer_id=a.id WHERE w.account_id=? ORDER BY s.name,a.id""",(a['id'],))]
-  return jsonify(profile=dict(a),cards=cards)
+   google_linked=c.execute('SELECT 1 FROM google_accounts WHERE account_id=?',(a['id'],)).fetchone()
+  return jsonify(profile={**dict(a),'google_linked':bool(google_linked)},cards=cards)
  @app.post('/api/wallet/link')
  def link():
   code=payload().get('code')
@@ -134,7 +135,7 @@ def install(app,db,payload,clean,err):
  @app.post('/api/wallet/delete')
  def delete_account():
   pw=payload().get('password')
-  if not isinstance(pw,str) or not 1<=len(pw)<=128:return err('Mot de passe requis')
+  if not isinstance(pw,str) or len(pw)>128:return err('Confirmation requise')
   with db() as c:
    a=account(c)
    if not a:return err('Connexion requise',401)
@@ -145,7 +146,8 @@ def install(app,db,payload,clean,err):
    a=account(c)
    if not a:return err('Connexion requise',401)
    row=c.execute('SELECT password FROM consumer_accounts WHERE id=?',(a['id'],)).fetchone()
-   if not row or not check_password_hash(row['password'],pw):return err('Mot de passe incorrect',401)
+   google_ok=bool(c.execute('SELECT 1 FROM google_accounts WHERE account_id=?',(a['id'],)).fetchone()) and int(session.get('google_reauth',0))>time.time()-300 and payload().get('confirm_google') is True
+   if not row or not (google_ok or (pw and check_password_hash(row['password'],pw))):return err('Reconnectez-vous avec Google' if payload().get('confirm_google') is True else 'Mot de passe incorrect',401)
    ids=[r['customer_id'] for r in c.execute('SELECT w.customer_id FROM wallet_cards w JOIN crm_customers a ON a.id=w.customer_id AND a.code_hash=w.card_hash WHERE w.account_id=?',(a['id'],))]
    for cid in ids:
     c.execute("UPDATE crm_customers SET name='Client anonymise',phone='',consent=0,code_hash=? WHERE id=?",(digest(secrets.token_urlsafe(32)),cid))
@@ -153,5 +155,5 @@ def install(app,db,payload,clean,err):
     c.execute('DELETE FROM loyalty_scan_tokens WHERE customer_id=?',(cid,))
    c.execute('DELETE FROM wallet_attempts WHERE subject=? AND kind IN (\'link\',\'delete\')',(str(a['id']),))
    c.execute('DELETE FROM consumer_accounts WHERE id=?',(a['id'],))
-  session.pop('wallet_token',None);clear_card()
+  session.pop('wallet_token',None);session.pop('google_reauth',None);clear_card()
   return jsonify(ok=True)
