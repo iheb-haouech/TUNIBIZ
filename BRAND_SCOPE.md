@@ -1,11 +1,6 @@
-# TUNIBIZ — Positionnement national
-Marché cible : toute la Tunisie, les 24 gouvernorats. Pas de mention de Djerba comme territoire de lancement ou restriction géographique dans les publicités, le site ou l'application.
-Cibles : restaurants, cafés, commerces, boutiques et autres petites entreprises.
-Langues : arabe tunisien pour les publicités; français, arabe et anglais pour les interfaces selon les besoins.
-Services prévus : menu/catalogue QR, commandes, réservations, suivi des ventes et fidélisation.
-Identité : logo TUNIBIZ, bleu #2563EB, turquoise #2DD4BF, marine #091628. Slogan : Your Business. Smarter.
-Accroche : عندك مشروع في تونس؟
-CTA : ابعثلنا «توني بيز» في الخاص
-Mention de prélancement : قريباً في كامل تونس
-Éviter de présenter les fonctionnalités comme déjà commercialisées si elles ne sont pas encore disponibles.
-Les anciennes créations ciblant Djerba sont des archives non destinées à la campagne nationale.
+# TUNIBIZ — positionnement national
+CRM marketing et fidélisation pour les commerces de toute la Tunisie.
+Fiches clients, consentement, segmentation, campagnes ciblées, carte client, points, achats, récompenses et réductions.
+Le site commercial et le mobile doivent présenter ces deux piliers. Le menu, les commandes et les réservations historiques restent conservés en code mais ne constituent plus les services commerciaux principaux.
+FR / EN / AR pour la vitrine; espaces fonctionnels en français au stade MVP.
+Identité: bleu marine #091628, bleu #2563EB, turquoise #2DD4BF. Slogan: Your Business. Smarter.

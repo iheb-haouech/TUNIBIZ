@@ -5,6 +5,6 @@ void main(){
  testWidgets('home exposes both journeys',(tester) async {
   await tester.pumpWidget(const Tunibiz());
   expect(find.text('Espace commerçant'),findsOneWidget);
-  expect(find.text('Menu client · Démo'),findsOneWidget);
+  expect(find.text('Ma carte fidélité'),findsOneWidget);
  });
 }

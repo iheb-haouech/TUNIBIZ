@@ -45,6 +45,7 @@ def security(r):
  if request.path.startswith('/api'):r.headers['Cache-Control']='no-store'
  return r
 @app.get('/')
+def relationship_home():return send_from_directory(app.static_folder,'relationship.html')
 @app.get('/business')
 @app.get('/menu/<slug>')
 def page(slug=None):return send_from_directory(app.static_folder,'index.html')
@@ -131,6 +132,8 @@ def status():
   if new not in allowed[kind].get(old['status'],[]):return err('Transition invalide')
   c.execute(f'UPDATE {kind} SET status=? WHERE id=? AND shop_id=?',(new,iid,sid))
  return jsonify(ok=True)
+from crm import install as install_crm
+install_crm(app, db, payload, clean, merchant, err)
 if __name__=='__main__':
  print('TUNIBIZ local preview: http://127.0.0.1:8877',flush=True)
  app.run(host='127.0.0.1',port=8877,debug=False)
