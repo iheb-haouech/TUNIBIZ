@@ -117,6 +117,14 @@ def install(app, db, payload, clean, merchant, err):
   return jsonify(ok=True),201
  @app.post('/api/loyalty/login')
  def login_card():
+  from time import time
+  window=int(time())//900;subject=request.remote_addr or 'local'
+  with db() as c:
+   c.execute('BEGIN IMMEDIATE')
+   c.execute('DELETE FROM wallet_attempts WHERE window<?',(window-1,))
+   r=c.execute("SELECT window,count FROM wallet_attempts WHERE kind='card_login' AND subject=?",(subject,)).fetchone()
+   if r and r['window']==window and r['count']>=30:return err('Trop de tentatives',429)
+   c.execute("INSERT INTO wallet_attempts(kind,subject,window,count) VALUES('card_login',?,?,1) ON CONFLICT(kind,subject) DO UPDATE SET count=CASE WHEN window=excluded.window THEN count+1 ELSE 1 END,window=excluded.window",(subject,window))
   code=clean(payload().get('code'),100)
   with db() as c:a=c.execute('SELECT id,code_hash FROM crm_customers WHERE code_hash=?',(digest(code),)).fetchone()
   if not a:return err('Code de carte incorrect',401)

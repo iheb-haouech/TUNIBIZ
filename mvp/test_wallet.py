@@ -70,6 +70,23 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
    page.locator('[data-open="'+str(cards[1]['id'])+'"]').click();page.locator('#makeqr').wait_for();assert 'QA Second' in page.locator('.card').inner_text()
    page.goto(url+'/wallet');page.locator('#logout').click();page.locator('#account-form').wait_for()
+   page.goto(url+'/account-deletion');page.get_by_role('link',name='Accéder au portefeuille et supprimer mon compte').click()
+   page.locator('[name=email]').fill(creds['email']);page.locator('[name=password]').fill(creds['password']);page.locator('#account-form button').click()
+   page.locator('#delete-account').click();page.locator('#delete-form [name=password]').fill('wrong-password');page.locator('#delete-form button[type=submit]').click()
+   page.get_by_text('Mot de passe incorrect',exact=True).wait_for()
+   page.locator('#delete-form [name=password]').fill(creds['password']);page.locator('#delete-form button[type=submit]').click()
+   page.get_by_text('Compte supprimé.',exact=True).wait_for()
    assert not errors,errors;browser.close()
+  get(a,'/wallet',401);get(a,'/loyalty',401)
+  with sqlite3.connect(p/'data/tunibiz.sqlite') as c:
+   assert c.execute('SELECT COUNT(*) FROM consumer_accounts WHERE email=?',(creds['email'],)).fetchone()[0]==0
+   for card in cards:
+    assert c.execute('SELECT name,phone,consent FROM crm_customers WHERE id=?',(card['id'],)).fetchone()==('Client anonymise','',0)
+    assert c.execute('SELECT COUNT(*) FROM wallet_cards WHERE customer_id=?',(card['id'],)).fetchone()[0]==0
+   assert c.execute('SELECT COUNT(*) FROM consumer_accounts WHERE email=?',('other@example.test',)).fetchone()[0]==1
+  stolen=client();stolen.cookies.update(m1.cookies)
+  post(m1,'/logout',{});get(stolen,'/crm',401)
+  print('PASS merchant logout revokes copied session cookie')
+  print('PASS account deletion, wrong password, all sessions revoked, other account unaffected, cards anonymized')
   print('PASS browser: wallet login, two cards, selected card, logout, responsive mobile and no JS errors')
  finally:server.terminate();server.wait(timeout=10)

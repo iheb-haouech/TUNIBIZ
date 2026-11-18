@@ -7,6 +7,7 @@ import 'loyalty_qr.dart';
 import 'reward_tile.dart';
 import 'wallet.dart';
 import 'business_dashboard.dart';
+import 'checkout_scanner.dart';
 
 const navy=Color(0xFF091628), blue=Color(0xFF2563EB), teal=Color(0xFF2DD4BF);
 String money(dynamic v)=>((v as num)/1000).toStringAsFixed(3)+' DT';
@@ -55,9 +56,16 @@ class _WorkspaceState extends State<Workspace>{
  Future<void> purchase(int id)async{final p=await fields('Enregistrer un achat',{'amount':'Montant en DT','label':'Référence (facultatif)'},optional:['label']);if(p==null)return;final amount=double.tryParse(p['amount']!.replaceAll(',','.'));if(amount==null||!amount.isFinite||amount<=0){setState(()=>message='Montant invalide');return;}await run(()async{await api.call('/crm/purchase',{'id':id,'amount':(amount*1000).round(),'label':p['label'],'key':requestKey()});await refresh();});}
  Future<void> redeem(int id)async{final rewards=(data?['rewards'] as List? ?? []).where((r)=>r['active']==1).toList();if(rewards.isEmpty){setState(()=>message='Créez une récompense.');return;}final r=await showDialog<int>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Choisir la récompense'),children:[for(final r in rewards)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,r['id']),child:Text(r['title']+' · '+r['cost'].toString()+' pts'))]));if(r==null)return;await run(()async{await api.call('/crm/redeem',{'id':id,'reward':r,'key':requestKey()});await refresh();});}
  Future<void> identifyQr()async{
- final p=await fields('Identifier une carte',{'token':'Code temporaire (TNB1:…)'});if(p==null||!mounted)return;
+ final method=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Identifier une carte'),children:[
+ SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'scan'),child:const Text('Scanner avec la caméra')),
+ SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'manual'),child:const Text('Saisir le code temporaire'))
+ ]));if(method==null||!mounted)return;
+ String? token;
+ if(method=='scan'){token=await Navigator.push<String>(context,MaterialPageRoute(builder:(_)=>const CheckoutScanner()));}
+ else{final p=await fields('Identifier une carte',{'token':'Code temporaire (TNB1:…)'});token=p?['token'];}
+ if(token==null||!mounted)return;if(!validCheckoutToken(token)){setState(()=>message='QR temporaire invalide');return;}
  Map<String,dynamic>? result;
- await run(()async{result=await api.call('/crm/qr/resolve',{'token':p['token']});});
+ await run(()async{result=await api.call('/crm/qr/resolve',{'token':token});});
  if(!mounted||result==null)return;final c=result!['customer'];
  final choice=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(title:Text(c['name']),content:Text(c['points'].toString()+' points · Carte identifiée. Aucune transaction effectuée.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Fermer')),TextButton(onPressed:()=>Navigator.pop(ctx,'purchase'),child:const Text('Achat')),TextButton(onPressed:()=>Navigator.pop(ctx,'redeem'),child:const Text('Récompense'))]));
  if(choice!=null&&mounted){if(choice=='purchase'){await purchase(c['id']);}else{await redeem(c['id']);}}

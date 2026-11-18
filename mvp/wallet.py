@@ -130,3 +130,28 @@ def install(app,db,payload,clean,err):
    c.execute('DELETE FROM loyalty_scan_tokens WHERE customer_id=?',(cid,))
   if session.get('card')==cid:clear_card()
   return jsonify(ok=True)
+
+ @app.post('/api/wallet/delete')
+ def delete_account():
+  pw=payload().get('password')
+  if not isinstance(pw,str) or not 1<=len(pw)<=128:return err('Mot de passe requis')
+  with db() as c:
+   a=account(c)
+   if not a:return err('Connexion requise',401)
+   aid=a['id']
+  if not limit('delete',str(aid),5):return err('Trop de tentatives',429)
+  with db() as c:
+   c.execute('BEGIN IMMEDIATE')
+   a=account(c)
+   if not a:return err('Connexion requise',401)
+   row=c.execute('SELECT password FROM consumer_accounts WHERE id=?',(a['id'],)).fetchone()
+   if not row or not check_password_hash(row['password'],pw):return err('Mot de passe incorrect',401)
+   ids=[r['customer_id'] for r in c.execute('SELECT w.customer_id FROM wallet_cards w JOIN crm_customers a ON a.id=w.customer_id AND a.code_hash=w.card_hash WHERE w.account_id=?',(a['id'],))]
+   for cid in ids:
+    c.execute("UPDATE crm_customers SET name='Client anonymise',phone='',consent=0,code_hash=? WHERE id=?",(digest(secrets.token_urlsafe(32)),cid))
+    c.execute("UPDATE loyalty_ledger SET label=CASE WHEN kind='purchase' THEN 'Achat' ELSE 'Recompense' END WHERE customer_id=?",(cid,))
+    c.execute('DELETE FROM loyalty_scan_tokens WHERE customer_id=?',(cid,))
+   c.execute('DELETE FROM wallet_attempts WHERE subject=? AND kind IN (\'link\',\'delete\')',(str(a['id']),))
+   c.execute('DELETE FROM consumer_accounts WHERE id=?',(a['id'],))
+  session.pop('wallet_token',None);clear_card()
+  return jsonify(ok=True)
