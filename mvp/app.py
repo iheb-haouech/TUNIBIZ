@@ -196,6 +196,8 @@ from subscriptions import install as install_subscriptions
 install_subscriptions(app,db,payload,clean,err,throttle,PRODUCTION)
 from google_identity import install as install_google
 install_google(app,db,payload,err,throttle)
+from analytics import install as install_analytics
+install_analytics(app,db,payload,err)
 if __name__=='__main__':
  if PRODUCTION:raise RuntimeError('Use a production WSGI server, not Flask development server')
  print('TUNIBIZ local preview: http://127.0.0.1:8877',flush=True)

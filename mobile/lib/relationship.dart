@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'dart:async';
+import 'usage_analytics.dart';
 import 'package:flutter/material.dart';
 import 'api.dart';
 import 'nearby.dart';
@@ -22,6 +24,7 @@ class Home extends StatelessWidget{
  const Home({super.key});
  void open(BuildContext context,int index){
   if(index==0)return;
+  unawaited(Api.usage(index==1?'wallet_open':index==2?'nearby_open':'business_open'));
   Navigator.push(context,MaterialPageRoute(builder:(_)=>index==2?const Nearby():index==3?const Workspace(merchant:true):ConsumerWallet(cardBuilder:(api,data)=>Workspace(merchant:false,sharedApi:api,initialData:data))));
  }
  @override Widget build(BuildContext context)=>Scaffold(backgroundColor:paper,body:SafeArea(bottom:false,child:ListView(padding:EdgeInsets.zero,children:[
@@ -31,6 +34,7 @@ class Home extends StatelessWidget{
  const SizedBox(height:18),
  Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:FeatureTile(asset:'assets/cafe.webp',title:'Vos habitudes ont de la valeur',subtitle:'Retrouvez vos avantages et récompenses chez les commerces partenaires.',tag:'FIDÉLITÉ',onTap:()=>open(context,1))),
  Padding(padding:const EdgeInsets.all(20),child:OutlinedButton.icon(onPressed:()=>open(context,3),icon:const Icon(Icons.storefront_outlined),label:const Text('Espace commerçant'))),
+ Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:TextButton(onPressed:()async{final v=await UsageAnalytics.preferences(context);if(v!=null){await UsageAnalytics.change(v);if(v)await Api.usage('home_view');}},child:const Text('Préférences de statistiques'))),
  const Padding(padding:EdgeInsets.fromLTRB(20,0,20,20),child:Text('Prototype de test · Les photos illustrent les catégories, pas des offres actives.',style:TextStyle(color:muted,fontSize:12)))
  ])),bottomNavigationBar:PremiumNav(index:0,onSelected:(i)=>open(context,i)));
 }

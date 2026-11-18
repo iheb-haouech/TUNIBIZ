@@ -41,7 +41,7 @@ class _NearbyState extends State<Nearby> with WidgetsBindingObserver{
  @override void dispose(){WidgetsBinding.instance.removeObserver(this);timer?.cancel();generation++;if(widget.apiOverride==null)api.close();map.dispose();super.dispose();}
  @override void didChangeAppLifecycleState(AppLifecycleState s){visible=s==AppLifecycleState.resumed;if(!visible&&s!=AppLifecycleState.inactive){stop();}}
  void stop(){timer?.cancel();generation++;mapReady=false;if(mounted)setState((){enabled=false;matches=[];position=null;baseMap=false;accuracy=null;status='Localisation désactivée.';});}
- Future<void> start()async{if(enabled)return;setState((){enabled=true;status='Recherche des offres…';});await scan();if(mounted&&enabled)timer=Timer.periodic(const Duration(seconds:45),(_)=>scan());}
+ Future<void> start()async{if(enabled)return;unawaited(Api.usage('nearby_discovery'));setState((){enabled=true;status='Recherche des offres…';});await scan();if(mounted&&enabled)timer=Timer.periodic(const Duration(seconds:45),(_)=>scan());}
  Future<void> scan()async{
  if(!enabled||busy||!visible)return;final g=generation;setState(()=>busy=true);
  try{
@@ -61,9 +61,9 @@ class _NearbyState extends State<Nearby> with WidgetsBindingObserver{
  Future<void> toggleMap()async{
  if(baseMap){setState(()=>baseMap=false);return;}
  final accepted=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Afficher les rues ?'),content:const Text('Le fond OpenStreetMap charge les tuiles visibles auprès de son fournisseur, qui peut déduire la zone affichée et recevoir votre adresse IP. TUNIBIZ et les commerces ne reçoivent pas votre position. Le radar local reste disponible sans ce partage.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Rester en radar')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Afficher la carte'))]));
- if(mounted&&enabled&&position!=null&&accepted==true)setState(()=>baseMap=true);
+ if(mounted&&enabled&&position!=null&&accepted==true){setState(()=>baseMap=true);unawaited(Api.usage('nearby_map_enabled'));}
  }
- void detail(Map<String,dynamic> o){final asset=nearbyAssets[o['category']];showModalBottomSheet<void>(context:context,isScrollControlled:true,useSafeArea:true,showDragHandle:true,builder:(ctx)=>Padding(padding:const EdgeInsets.fromLTRB(22,0,22,24),child:SingleChildScrollView(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
+ void detail(Map<String,dynamic> o){unawaited(Api.usage('nearby_offer_view'));final asset=nearbyAssets[o['category']];showModalBottomSheet<void>(context:context,isScrollControlled:true,useSafeArea:true,showDragHandle:true,builder:(ctx)=>Padding(padding:const EdgeInsets.fromLTRB(22,0,22,24),child:SingleChildScrollView(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
  if(asset!=null)ClipRRect(borderRadius:BorderRadius.circular(18),child:Image.asset(asset,height:156,width:double.infinity,fit:BoxFit.cover)),
  if(asset!=null)const Text('Photo illustrative',style:TextStyle(fontSize:11,color:muted)),
  const SizedBox(height:10),Text(o['title'].toString(),style:const TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:ink)),
