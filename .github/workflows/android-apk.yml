@@ -5,7 +5,7 @@ on:
     paths:
       - '.github/workflows/android-apk.yml'
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: tunibiz-android-test
   cancel-in-progress: true
@@ -41,9 +41,8 @@ jobs:
           cp build/app/outputs/flutter-apk/app-debug.apk artifacts/TUNIBIZ-v0.2.0-debug.apk
           unzip -tq artifacts/TUNIBIZ-v0.2.0-debug.apk
           sha256sum artifacts/TUNIBIZ-v0.2.0-debug.apk > artifacts/SHA256SUMS.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: TUNIBIZ-v0.2.0-debug
-          path: mobile/artifacts/
-          if-no-files-found: error
-          retention-days: 7
+      - name: Publish private test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "android-test-${GITHUB_RUN_ID}" artifacts/TUNIBIZ-v0.2.0-debug.apk artifacts/SHA256SUMS.txt --target "$GITHUB_SHA" --title "TUNIBIZ Android 0.2.0 USB test" --notes "Debug APK for authorized USB testing only; not production. Backend via adb reverse tcp:8877 tcp:8877." --prerelease
