@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright
 P=pathlib.Path(__file__).parent
 with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  p=pathlib.Path(tmp)
- for file in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py']:shutil.copy2(P/file,p/file)
+ for file in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py','merchant_dashboard.py']:shutil.copy2(P/file,p/file)
  shutil.copytree(P/'static',p/'static')
  server=subprocess.Popen([sys.executable,'-c',"from app import app;app.run(host='127.0.0.1',port=8879,debug=False)"],cwd=p,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  url='http://127.0.0.1:8879'
@@ -33,7 +33,7 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
    assert client.locator('.reward-card img').get_attribute('src')=='/static/media/espresso.webp'
    assert client.locator('.reward-card progress').get_attribute('value')=='68'
    client.locator('#makeqr').click();client.locator('#qrview canvas').wait_for();token=client.locator('#qrview .code').inner_text();assert token.startswith('TNB1:')
-   merchant.goto(url+'/crm');merchant.locator('[name=password]').fill(pw);merchant.locator('#login button').click();merchant.locator('#resolveqr [name=token]').fill(token);merchant.locator('#resolveqr button').click();merchant.get_by_text('Carte identifiée. Confirmez séparément',exact=False).wait_for()
+   merchant.goto(url+'/crm');merchant.locator('[name=password]').fill(pw);merchant.locator('#login button').click();merchant.locator('[data-tab=customers]').click();merchant.locator('#resolveqr [name=token]').fill(token);merchant.locator('#resolveqr button').click();merchant.get_by_text('Carte identifiée. Confirmez séparément',exact=False).wait_for()
    assert merchant.get_by_role('heading',name='QR Test Client').count()==1
    assert not errors,errors
    browser.close()

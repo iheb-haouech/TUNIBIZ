@@ -1,4 +1,4 @@
-let csrf='',data,tab='customers',selected=null,card=false;const root=document.querySelector('#app'),merchant=location.pathname==='/crm';
+let csrf='',data,tab='overview',period=7,selected=null,card=false;const root=document.querySelector('#app'),merchant=location.pathname==='/crm';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>(n/1000).toFixed(3)+' DT';const key=()=>crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random();
 const rewardVisuals={general:'Avantage / réduction',coffee:'Café et boissons chaudes',restaurant:'Restaurant',bakery:'Boulangerie et pâtisserie',drinks:'Boissons fraîches',shopping:'Shopping'};
@@ -12,7 +12,8 @@ function login(){root.innerHTML='<div class="panel" style="max-width:480px;margi
 async function refresh(){data=await api(merchant?'/crm':'/loyalty');merchant?render():renderCard()}
 function metrics(s){return '<div class="metrics">'+[['Clients',s.customers],['Consentements marketing',s.consented],['Points en circulation',s.points],['Achats enregistrés',money(s.spent)]].map(a=>'<div class="metric"><small>'+a[0]+'</small><strong>'+a[1]+'</strong></div>').join('')+'</div>'}
 function render(){
- root.innerHTML='<div class="head"><div><span class="eyebrow">TUNIBIZ BUSINESS / CRM & FIDÉLITÉ</span><h1>Votre relation client.</h1></div><button class="secondary" id="logout">Déconnexion</button></div>'+metrics(data.stats)+'<div class="tabs">'+[['customers','Clients'],['campaigns','Campagnes'],['rewards','Récompenses']].map(a=>'<button data-tab="'+a[0]+'" class="'+(tab===a[0]?'active':'')+'">'+a[1]+'</button>').join('')+'</div><div id="notice"></div><div id="content"></div>';
+ root.innerHTML='<div class="head"><div><span class="eyebrow">TUNIBIZ BUSINESS</span><h1>Espace commerçant</h1></div><div><button class="secondary" id="refresh-business">Actualiser</button> <button class="secondary" id="logout">Déconnexion</button></div></div><div class="business-tabs">'+[['overview','Accueil'],['customers','Clients'],['campaigns','Campagnes'],['rewards','Récompenses']].map(a=>'<button data-tab="'+a[0]+'" class="'+(tab===a[0]?'active':'')+'">'+a[1]+'</button>').join('')+'<a class="biz-link" style="width:auto;margin:0;white-space:nowrap" href="/nearby/business">Nearby</a></div><div id="notice"></div><div id="content"></div>';
+ document.querySelector('#refresh-business').onclick=()=>refresh().catch(e=>notice(e.message,true));
  document.querySelector('#logout').onclick=async()=>{await api('/logout',{});login()};document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;selected=null;render()});renderTab();
 }
 function clientList(q=''){return data.customers.filter(c=>(c.name+' '+c.phone).toLowerCase().includes(q.toLowerCase())).map(c=>'<div class="item"><div><b>'+esc(c.name)+'</b><small>'+esc(c.phone||'Sans téléphone')+' · '+c.purchases+' achat(s) · '+money(c.spent)+'</small><small>Marketing : '+(c.consent?'consenti':'non consenti')+'</small></div><div><span class="tag">'+c.points+' pts</span> <button class="secondary" data-client="'+c.id+'">Voir</button></div></div>').join('')||'<p>Aucun client.</p>'}
@@ -31,7 +32,11 @@ async function updateDetail(id){data=await api('/crm');render();await detail(id)
 function showCode(code,sel){document.querySelector(sel).innerHTML='<div class="notice"><b>Code individuel à remettre au client (affiché une seule fois)</b><p class="code">'+esc(code)+'</p><button id="copycode">Copier le code</button></div>';document.querySelector('#copycode').onclick=()=>navigator.clipboard.writeText(code).catch(()=>notice('Sélectionnez le code pour le copier',true))}
 function history(h){return h.length?h.map(l=>'<div class="item"><div><b>'+esc(l.label)+'</b><small>'+esc(l.created)+' · '+(l.kind==='purchase'?money(l.amount):'Récompense')+'</small></div><span class="tag">'+(l.points>=0?'+':'')+l.points+' pts</span></div>').join(''):'<p>Aucun mouvement.</p>'}
 function renderTab(){
- const el=document.querySelector('#content');if(tab==='customers'){
+ const el=document.querySelector('#content');if(tab==='overview'){
+ el.innerHTML=businessOverview(data,period);
+ el.querySelectorAll('[data-period]').forEach(b=>b.onclick=()=>{period=Number(b.dataset.period);renderTab()});
+ el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{tab=b.dataset.go;render()});
+ }else if(tab==='customers'){
  el.innerHTML='<div class="split"><div class="panel"><h2>Clients</h2><input class="search" id="search" placeholder="Rechercher nom ou téléphone"><div id="customers">'+clientList()+'</div></div><div class="panel"><h2>Nouveau client</h2><form id="create"><label>Nom</label><input name="name" maxlength="80" required><label>Téléphone facultatif</label><input name="phone" type="tel" maxlength="25"><label class="check"><input type="checkbox" name="consent">Le client accepte de recevoir des offres marketing dans sa carte.</label><button>Créer la carte</button></form><div id="codebox"></div></div></div>';
  const scan=document.createElement('section');scan.className='panel section';scan.innerHTML='<h2>Identifier une carte QR</h2><p>Scannez le QR temporaire du client ou collez son code. Aucune transaction automatique.</p><form id="resolveqr"><label>Code temporaire</label><input name="token" required autocomplete="off" maxlength="29" placeholder="TNB1:…"><button>Identifier</button></form><button class="secondary" id="cameraqr" type="button">Scanner avec la caméra</button><div id="cameraarea"></div>';el.prepend(scan);
  bind('resolveqr',async p=>{const r=await api('/crm/qr/resolve',p);await detail(r.customer.id);notice('Carte identifiée. Confirmez séparément l’achat ou la récompense.')});

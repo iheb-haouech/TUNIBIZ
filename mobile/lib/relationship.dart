@@ -6,6 +6,7 @@ import 'premium.dart';
 import 'loyalty_qr.dart';
 import 'reward_tile.dart';
 import 'wallet.dart';
+import 'business_dashboard.dart';
 
 const navy=Color(0xFF091628), blue=Color(0xFF2563EB), teal=Color(0xFF2DD4BF);
 String money(dynamic v)=>((v as num)/1000).toStringAsFixed(3)+' DT';
@@ -72,23 +73,40 @@ class _WorkspaceState extends State<Workspace>{
  final visual=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Choisir un visuel illustratif'),children:[for(final e in rewardVisuals.entries)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,e.key),child:Text(e.value))]));if(visual==null)return;
  await run(()async{await api.call('/crm/reward',{'title':p['title'],'cost':int.tryParse(p['cost']!)??0,'description':p['description'],'visual':visual});await refresh();});
  }
+ Future<void> manageNearby()async{
+ Map<String,dynamic>? result;
+ await run(()async{result=await api.call('/nearby/business');});if(!mounted||result==null)return;
+ final d=result!,loc=(d['location'] as Map?)??{};
+ final action=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Nearby Business'),children:[
+ SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'location'),child:const Text('Configurer mon établissement')),
+ SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'offer'),child:const Text('Créer une promotion')),
+ for(final o in d['offers'])if(o['active']==1)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'stop:'+o['id'].toString()),child:Text('Arrêter : '+o['title'].toString()))
+ ]));if(!mounted||action==null)return;
+ if(action=='location'){final p=await fields('Localisation fixe',{'address':'Adresse publique','lat':'Latitude','lon':'Longitude'},initial:{for(final k in ['address','lat','lon'])k:loc[k]?.toString()??''});if(p!=null)await run(()async{await api.call('/nearby/location',p);await refresh();});}
+ else if(action=='offer'){final day=DateTime.now().toIso8601String().substring(0,10);final p=await fields('Nouvelle promotion',{'title':'Titre','description':'Conditions','starts':'Début AAAA-MM-JJ','ends':'Fin AAAA-MM-JJ'},initial:{'starts':day,'ends':day});if(p==null||!mounted)return;
+ final cat=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Catégorie'),children:[for(final e in nearbyCategories.entries)if(e.key!='all')SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,e.key),child:Text(e.value))]));if(cat!=null)await run(()async{await api.call('/nearby/offer',{...p,'category':cat});await refresh();});}
+ else if(action.startsWith('stop:')){final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Arrêter cette promotion ?'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Arrêter'))]));if(ok==true)await run(()async{await api.call('/nearby/stop',{'id':int.parse(action.substring(5))});await refresh();});}
+ }
  Widget panel(Widget child)=>Card(child:Padding(padding:const EdgeInsets.all(16),child:child));
  Widget metric(String label,String value)=>panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(label),Text(value,style:const TextStyle(fontSize:25,fontWeight:FontWeight.bold))]));
  List<Widget> merchantView(Map<String,dynamic> d)=>[
- const Text('Relation client',style:TextStyle(fontSize:28,fontWeight:FontWeight.bold)),
- Row(children:[Expanded(child:metric('Clients',d['stats']['customers'].toString())),Expanded(child:metric('Points',d['stats']['points'].toString()))]),
- metric('Achats enregistrés',money(d['stats']['spent'])),
- if(tab==0)...[
+ if(tab==0)BusinessDashboard(data:d,onQr:busy?null:identifyQr,onCustomer:busy?null:addCustomer,onCampaign:busy?null:campaign,onNearby:busy?null:()=>setState(()=>tab=4)),
+ if(tab==1)const Text('Mes clients',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:ink)),
+ if(tab==1)...[
  FilledButton.icon(onPressed:busy?null:identifyQr,icon:const Icon(Icons.qr_code_scanner),label:const Text('Identifier une carte QR')),
  FilledButton.icon(onPressed:busy?null:addCustomer,icon:const Icon(Icons.person_add),label:const Text('Nouveau client')),
  for(final c in d['customers']) panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(c['name'],style:const TextStyle(fontSize:18,fontWeight:FontWeight.bold)),Text(c['points'].toString()+' points · '+money(c['spent'])),Text(c['consent']==1?'Offres acceptées':'Offres désactivées'),Wrap(spacing:5,children:[TextButton(onPressed:busy?null:()=>purchase(c['id']),child:const Text('Achat')),TextButton(onPressed:busy?null:()=>redeem(c['id']),child:const Text('Récompense')),TextButton(onPressed:busy?null:()=>customerHistory(c['id']),child:const Text('Historique'))])]))
- ]else if(tab==1)...[
+ ]else if(tab==2)...[
  FilledButton(onPressed:busy?null:campaign,child:const Text('Créer une campagne')),
  const Text('Publication dans les cartes des clients consentants.'),
  for(final c in d['campaigns'])panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(c['title'],style:const TextStyle(fontWeight:FontWeight.bold)),Text(c['description']),Text(c['starts']+' au '+c['ends']),Text(c['audience'].toString()+' clients éligibles'),if(c['active']==1)TextButton(onPressed:busy?null:()=>run(()async{await api.call('/crm/campaign/stop',{'id':c['id']});await refresh();}),child:const Text('Arrêter'))]))
- ]else...[
+ ]else if(tab==3)...[
  FilledButton(onPressed:busy?null:newReward,child:const Text('Ajouter une récompense')),
  for(final r in d['rewards'])panel(ListTile(title:Text(r['title']),trailing:Text(r['cost'].toString()+' pts')))
+ ]else if(tab==4)...[
+ const Text('Nearby Business',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:ink)),
+ FilledButton.icon(onPressed:busy?null:manageNearby,icon:const Icon(Icons.radar),label:const Text('Gérer les promotions et la localisation')),
+ const Text('Rayon 1 km · aucune position individuelle des visiteurs.')
  ]];
  List<Widget> cardView(Map<String,dynamic> d){final c=d['customer'];final points=(c['points'] as num).toInt();final rewards=(d['rewards'] as List).toList()..sort((a,b)=>(a['cost'] as num).compareTo(b['cost'] as num));final next=rewards.where((r)=>(r['cost'] as num)>points).toList();
  final goal=next.isNotEmpty?(next.first['cost'] as num).toInt():rewards.isNotEmpty?(rewards.last['cost'] as num).toInt():100;
@@ -110,5 +128,5 @@ class _WorkspaceState extends State<Workspace>{
  for(final r in d['history'])Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:panel(ListTile(title:Text(r['label']),subtitle:Text(r['created']),trailing:Text(r['points'].toString()+' pts')))),
  const SizedBox(height:24)
  ];}
- @override Widget build(BuildContext context){final d=data;return Scaffold(appBar:AppBar(title:Text(widget.merchant?'TUNIBIZ Business':'TUNIBIZ Loyalty'),actions:d==null?[]:[IconButton(onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),IconButton(onPressed:busy?null:logout,icon:const Icon(Icons.logout))]),bottomNavigationBar:widget.merchant&&d!=null?NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const [NavigationDestination(icon:Icon(Icons.people_outline),label:'Clients'),NavigationDestination(icon:Icon(Icons.campaign_outlined),label:'Campagnes'),NavigationDestination(icon:Icon(Icons.card_giftcard),label:'Avantages')]):null,body:ListView(controller:scroll,padding:!widget.merchant&&d!=null?EdgeInsets.zero:const EdgeInsets.all(16),children:[if(busy)const LinearProgressIndicator(),if(message.isNotEmpty)Text(message,style:const TextStyle(color:Colors.red)),if(d==null)...[const SizedBox(height:25),Text(widget.merchant?'Connexion commerçant':'Connectez votre carte',style:const TextStyle(fontSize:28,fontWeight:FontWeight.bold)),const SizedBox(height:15),if(widget.merchant)...[TextField(controller:email,decoration:const InputDecoration(labelText:'Email')),const SizedBox(height:10)],TextField(controller:secret,obscureText:true,decoration:InputDecoration(labelText:widget.merchant?'Mot de passe':'Code personnel')),const SizedBox(height:15),FilledButton(onPressed:busy?null:signIn,child:const Text('Se connecter'))]else ...(widget.merchant?merchantView(d):cardView(d))]));}
+ @override Widget build(BuildContext context){final d=data;return Scaffold(appBar:AppBar(title:Text(widget.merchant?'TUNIBIZ Business':'TUNIBIZ Loyalty'),actions:d==null?[]:[IconButton(onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),IconButton(onPressed:busy?null:logout,icon:const Icon(Icons.logout))]),bottomNavigationBar:widget.merchant&&d!=null?NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const [NavigationDestination(icon:Icon(Icons.dashboard_outlined),label:'Accueil'),NavigationDestination(icon:Icon(Icons.people_outline),label:'Clients'),NavigationDestination(icon:Icon(Icons.campaign_outlined),label:'Campagnes'),NavigationDestination(icon:Icon(Icons.card_giftcard),label:'Avantages'),NavigationDestination(icon:Icon(Icons.radar),label:'Nearby')]):null,body:ListView(controller:scroll,padding:!widget.merchant&&d!=null?EdgeInsets.zero:const EdgeInsets.all(16),children:[if(busy)const LinearProgressIndicator(),if(message.isNotEmpty)Text(message,style:const TextStyle(color:Colors.red)),if(d==null)...[const SizedBox(height:25),Text(widget.merchant?'Connexion commerçant':'Connectez votre carte',style:const TextStyle(fontSize:28,fontWeight:FontWeight.bold)),const SizedBox(height:15),if(widget.merchant)...[TextField(controller:email,decoration:const InputDecoration(labelText:'Email')),const SizedBox(height:10)],TextField(controller:secret,obscureText:true,decoration:InputDecoration(labelText:widget.merchant?'Mot de passe':'Code personnel')),const SizedBox(height:15),FilledButton(onPressed:busy?null:signIn,child:const Text('Se connecter'))]else ...(widget.merchant?merchantView(d):cardView(d))]));}
 }

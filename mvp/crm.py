@@ -1,5 +1,7 @@
 """TUNIBIZ CRM + Loyalty, local MVP. Amounts in millimes; 1 point / whole DT."""
 import secrets, hashlib, re
+from merchant_dashboard import dashboard
+from merchant_dashboard import dashboard
 from datetime import date, timedelta
 from flask import request, jsonify, session, send_from_directory
 def install(app, db, payload, clean, merchant, err):
@@ -35,7 +37,7 @@ def install(app, db, payload, clean, merchant, err):
   with db() as c:
    a=customers(c,sid);cs=campaigns(c,sid)
    for x in cs:x['audience']=sum(1 for z in a if z['consent'] and segment_ok(z,x['segment']))
-   return jsonify(customers=a,campaigns=cs,rewards=rewards(c,sid),stats={'customers':len(a),'consented':sum(z['consent'] for z in a),'points':sum(z['points'] for z in a),'spent':sum(z['spent'] for z in a)})
+   return jsonify(dashboard=dashboard(c,sid),customers=a,campaigns=cs,rewards=rewards(c,sid),stats={'customers':len(a),'consented':sum(z['consent'] for z in a),'points':sum(z['points'] for z in a),'spent':sum(z['spent'] for z in a)})
  @app.post('/api/crm/customer')
  def customer_create():
   sid=merchant();p=payload();n=clean(p.get('name'));phone=clean(p.get('phone'),25);consent=p.get('consent') is True

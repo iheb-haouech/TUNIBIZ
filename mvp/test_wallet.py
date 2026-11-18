@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 P=Path(__file__).parent
 with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  p=Path(tmp)
- for name in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py']:shutil.copy2(P/name,p/name)
+ for name in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py','merchant_dashboard.py']:shutil.copy2(P/name,p/name)
  shutil.copytree(P/'static',p/'static')
  server=subprocess.Popen([sys.executable,'-c',"from app import app;app.run(host='127.0.0.1',port=8879,debug=False)"],cwd=p,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  url='http://127.0.0.1:8879'
@@ -32,6 +32,11 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
    card=post(m,'/crm/customer',{'name':n,'phone':'','consent':False},201);cards.append(card)
    post(m,'/crm/purchase',{'id':card['id'],'amount':points*1000,'key':str(uuid.uuid4())},201)
    post(m,'/crm/reward',{'title':'QA Reward','cost':100},201)
+  d1=get(m1,'/crm')['dashboard'];d2=get(m2,'/crm')['dashboard']
+  assert len(d1['daily'])==30 and sum(x['amount'] for x in d1['daily'])==135000
+  assert sum(x['amount'] for x in d2['daily'])==80000 and d1['buyers']==1 and d1['repeat_buyers']==0
+  assert get(client(),'/crm',401)
+  print('PASS dashboard: timeline, merchant isolation and auth')
   a,b=client(),client();creds={'name':'QA Wallet','email':'wallet@example.test','password':'Long-Test-Passphrase'}
   get(a,'/wallet',401);post(a,'/wallet/register',creds,201);post(b,'/wallet/register',{**creds,'email':'other@example.test'},201)
   for card in cards:post(a,'/wallet/link',{'code':card['code']})
@@ -54,6 +59,12 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
    try:browser=w.chromium.launch(headless=True)
    except Exception:browser=w.chromium.launch(channel='msedge',headless=True)
    page=browser.new_page(viewport={'width':390,'height':844});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+   page.goto(url+'/crm');page.locator('[name=password]').fill(pw);page.locator('#login button').click()
+   page.locator('.business-hero').wait_for();assert page.locator('.business-bar').count()==7
+   assert page.locator('.business-amount').inner_text()=='135.000 DT'
+   page.locator('[data-period="30"]').click();assert page.locator('.business-bar').count()==30
+   assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+   page.locator('[data-go=customers]').click();page.locator('#resolveqr').wait_for()
    page.goto(url+'/wallet');page.locator('[name=email]').fill(creds['email']);page.locator('[name=password]').fill(creds['password']);page.locator('#account-form button').click()
    page.locator('.wallet-card').first.wait_for();assert page.locator('.wallet-card').count()==2
    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
