@@ -3,3 +3,5 @@ Werkzeug>=3.0,<4
 Pillow>=10,<13
 requests>=2.31,<3
 playwright>=1.45,<2
+
+qrcode==8.2

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'nearby.dart';
 import 'premium.dart';
+import 'loyalty_qr.dart';
 
 const navy=Color(0xFF091628), blue=Color(0xFF2563EB), teal=Color(0xFF2DD4BF);
 String money(dynamic v)=>((v as num)/1000).toStringAsFixed(3)+' DT';
@@ -37,9 +38,9 @@ class _WorkspaceState extends State<Workspace>{
  Future<void> signIn()async=>run(()async{await api.init();await api.call(widget.merchant?'/login':'/loyalty/login',widget.merchant?{'email':email.text,'password':secret.text}:{'code':secret.text});secret.clear();await refresh();});
  Future<void> logout()async=>run(()async{await api.call(widget.merchant?'/logout':'/loyalty/logout',{});if(mounted)setState(()=>data=null);});
  Future<Map<String,String>?> fields(String title,Map<String,String> labels,{Map<String,String> initial=const {},List<String> optional=const []})async{
- final cs={for(final k in labels.keys)k:TextEditingController(text:initial[k]??'')};final form=GlobalKey<FormState>();
- final result=await showDialog<Map<String,String>>(context:context,builder:(ctx)=>AlertDialog(title:Text(title),content:Form(key:form,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[for(final e in labels.entries)Padding(padding:const EdgeInsets.only(bottom:12),child:TextFormField(controller:cs[e.key],decoration:InputDecoration(labelText:e.value),validator:(v)=>!optional.contains(e.key)&&(v==null||v.trim().isEmpty)?'Requis':null))]))),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:(){if(form.currentState!.validate())Navigator.pop(ctx,{for(final e in cs.entries)e.key:e.value.text.trim()});},child:const Text('Valider'))]));
- for(final c in cs.values)c.dispose();return result;
+ final values=<String,String>{...initial};final form=GlobalKey<FormState>();
+ return showDialog<Map<String,String>>(context:context,builder:(ctx)=>AlertDialog(title:Text(title),content:Form(key:form,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[for(final e in labels.entries)Padding(padding:const EdgeInsets.only(bottom:12),child:TextFormField(initialValue:initial[e.key]??'',decoration:InputDecoration(labelText:e.value),onSaved:(v)=>values[e.key]=(v??'').trim(),validator:(v)=>!optional.contains(e.key)&&(v==null||v.trim().isEmpty)?'Requis':null))]))),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:(){if(form.currentState!.validate()){form.currentState!.save();Navigator.pop(ctx,values);}},child:const Text('Valider'))]));
+
  }
  Future<void> codeDialog(String code)async{if(!mounted)return;await showDialog<void>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Code personnel à remettre au client'),content:SelectableText(code),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Fermer'))]));}
  Future<void> addCustomer()async{
@@ -49,6 +50,14 @@ class _WorkspaceState extends State<Workspace>{
  }
  Future<void> purchase(int id)async{final p=await fields('Enregistrer un achat',{'amount':'Montant en DT','label':'Référence (facultatif)'},optional:['label']);if(p==null)return;final amount=double.tryParse(p['amount']!.replaceAll(',','.'));if(amount==null||!amount.isFinite||amount<=0){setState(()=>message='Montant invalide');return;}await run(()async{await api.call('/crm/purchase',{'id':id,'amount':(amount*1000).round(),'label':p['label'],'key':requestKey()});await refresh();});}
  Future<void> redeem(int id)async{final rewards=(data?['rewards'] as List? ?? []).where((r)=>r['active']==1).toList();if(rewards.isEmpty){setState(()=>message='Créez une récompense.');return;}final r=await showDialog<int>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Choisir la récompense'),children:[for(final r in rewards)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,r['id']),child:Text(r['title']+' · '+r['cost'].toString()+' pts'))]));if(r==null)return;await run(()async{await api.call('/crm/redeem',{'id':id,'reward':r,'key':requestKey()});await refresh();});}
+ Future<void> identifyQr()async{
+ final p=await fields('Identifier une carte',{'token':'Code temporaire (TNB1:…)'});if(p==null||!mounted)return;
+ Map<String,dynamic>? result;
+ await run(()async{result=await api.call('/crm/qr/resolve',{'token':p['token']});});
+ if(!mounted||result==null)return;final c=result!['customer'];
+ final choice=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(title:Text(c['name']),content:Text(c['points'].toString()+' points · Carte identifiée. Aucune transaction effectuée.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Fermer')),TextButton(onPressed:()=>Navigator.pop(ctx,'purchase'),child:const Text('Achat')),TextButton(onPressed:()=>Navigator.pop(ctx,'redeem'),child:const Text('Récompense'))]));
+ if(choice!=null&&mounted){if(choice=='purchase'){await purchase(c['id']);}else{await redeem(c['id']);}}
+ }
  Future<void> customerHistory(int id)async=>run(()async{final d=await api.call('/crm/customer/'+id.toString());if(!mounted)return;await showDialog<void>(context:context,builder:(ctx)=>AlertDialog(title:Text(d['customer']['name']),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[for(final x in d['history'])ListTile(title:Text(x['label']),subtitle:Text(x['created']),trailing:Text(x['points'].toString()+' pts'))])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Fermer'))]));});
  Future<void> campaign()async{
  final now=DateTime.now().toIso8601String().substring(0,10);
@@ -63,6 +72,7 @@ class _WorkspaceState extends State<Workspace>{
  Row(children:[Expanded(child:metric('Clients',d['stats']['customers'].toString())),Expanded(child:metric('Points',d['stats']['points'].toString()))]),
  metric('Achats enregistrés',money(d['stats']['spent'])),
  if(tab==0)...[
+ FilledButton.icon(onPressed:busy?null:identifyQr,icon:const Icon(Icons.qr_code_scanner),label:const Text('Identifier une carte QR')),
  FilledButton.icon(onPressed:busy?null:addCustomer,icon:const Icon(Icons.person_add),label:const Text('Nouveau client')),
  for(final c in d['customers']) panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(c['name'],style:const TextStyle(fontSize:18,fontWeight:FontWeight.bold)),Text(c['points'].toString()+' points · '+money(c['spent'])),Text(c['consent']==1?'Offres acceptées':'Offres désactivées'),Wrap(spacing:5,children:[TextButton(onPressed:busy?null:()=>purchase(c['id']),child:const Text('Achat')),TextButton(onPressed:busy?null:()=>redeem(c['id']),child:const Text('Récompense')),TextButton(onPressed:busy?null:()=>customerHistory(c['id']),child:const Text('Historique'))])]))
  ]else if(tab==1)...[
@@ -79,6 +89,7 @@ class _WorkspaceState extends State<Workspace>{
  final rewardsKey=GlobalKey();
  return [
  PremiumHero(name:'Bonjour '+c['name'],shop:d['shop'].toString(),description:description,action:'Mes récompenses',points:points,goal:goal,signedIn:true,onAction:(){final ctx=rewardsKey.currentContext;if(ctx!=null){Scrollable.ensureVisible(ctx,duration:const Duration(milliseconds:350));}else if(scroll.hasClients){scroll.animateTo(min(510.0,scroll.position.maxScrollExtent),duration:const Duration(milliseconds:350),curve:Curves.easeOut);}}),
+ Padding(padding:const EdgeInsets.fromLTRB(20,16,20,0),child:FilledButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>LoyaltyQr(api:api,shop:d['shop'].toString()))),icon:const Icon(Icons.qr_code_2),label:const Text('Présenter ma carte QR'))),
  Padding(key:rewardsKey,padding:const EdgeInsets.fromLTRB(20,26,20,12),child:const Text('Vos récompenses',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:ink))),
  if(rewards.isEmpty)const Padding(padding:EdgeInsets.symmetric(horizontal:20),child:Text('Aucune récompense publiée.')),
  for(final r in rewards)Padding(padding:const EdgeInsets.fromLTRB(20,0,20,12),child:Material(color:Colors.white,borderRadius:BorderRadius.circular(18),child:Padding(padding:const EdgeInsets.all(15),child:Row(children:[

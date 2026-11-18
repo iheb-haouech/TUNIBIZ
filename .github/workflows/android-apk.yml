@@ -1,9 +1,6 @@
 name: Build TUNIBIZ Android APK
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/android-apk.yml'
 permissions:
   contents: write
 concurrency:
