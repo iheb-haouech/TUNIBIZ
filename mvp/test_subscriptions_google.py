@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash
 P=Path(__file__).parent
 with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  p=Path(tmp)
- for n in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py','merchant_dashboard.py','subscriptions.py','google_identity.py','analytics.py']:shutil.copy2(P/n,p/n)
+ for n in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py','merchant_dashboard.py','subscriptions.py','google_identity.py','analytics.py','password_recovery.py']:shutil.copy2(P/n,p/n)
  shutil.copytree(P/'static',p/'static')
  sys.path.insert(0,str(p));os.environ['TUNIBIZ_ADMIN_PASSWORD_HASH']=generate_password_hash('QA-admin-only-123')
  from app import app,db

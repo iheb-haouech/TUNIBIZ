@@ -75,10 +75,15 @@ def csrf():
 def security(r):
  r.headers['X-Content-Type-Options']='nosniff';r.headers['Referrer-Policy']='strict-origin-when-cross-origin' if request.path in ('/nearby','/merchant-register') else 'same-origin';r.headers['X-Frame-Options']='DENY'
  if PRODUCTION:r.headers['Strict-Transport-Security']='max-age=31536000'
- if request.path.startswith('/api'):r.headers['Cache-Control']='no-store'
+ if request.path.startswith('/api') or request.path=='/reset-password':r.headers['Cache-Control']='no-store'
+ if request.path=='/reset-password':r.headers['Referrer-Policy']='no-referrer'
  return r
 @app.get('/')
-def relationship_home():return send_from_directory(app.static_folder,'relationship.html')
+def relationship_home():return send_from_directory(app.static_folder,'home-premium.html')
+@app.get('/solutions')
+def solutions_page():return send_from_directory(app.static_folder,'relationship.html')
+@app.get('/download')
+def download_page():return send_from_directory(app.static_folder,'download.html')
 @app.get('/account-deletion')
 def account_deletion():return send_from_directory(app.static_folder,'account-deletion.html')
 @app.get('/privacy')
@@ -198,6 +203,8 @@ from google_identity import install as install_google
 install_google(app,db,payload,err,throttle)
 from analytics import install as install_analytics
 install_analytics(app,db,payload,err)
+from password_recovery import install as install_recovery
+install_recovery(app,db,payload,err,throttle)
 if __name__=='__main__':
  if PRODUCTION:raise RuntimeError('Use a production WSGI server, not Flask development server')
  print('TUNIBIZ local preview: http://127.0.0.1:8877',flush=True)

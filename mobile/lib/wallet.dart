@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'api.dart';
+import 'password_recovery.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'premium.dart';
 
@@ -67,7 +68,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  FilledButton(onPressed:busy?null:signIn,child:Text(registering?'Créer mon portefeuille':'Se connecter')),
  OutlinedButton.icon(onPressed:busy?null:signInGoogle,icon:const Icon(Icons.account_circle_outlined),label:const Text('Continuer avec Google')),
  TextButton(onPressed:busy?null:()=>setState((){registering=!registering;message='';password.clear();}),child:Text(registering?'J’ai déjà un compte':'Créer un compte gratuit')),
- const Text('Prototype : vérification d’email et récupération du mot de passe non disponibles.',style:TextStyle(color:muted,fontSize:12))
+ if(!registering)TextButton(onPressed:busy?null:()=>recoverPassword(context,'consumer',email.text),child:const Text('Mot de passe oublié ?'))
  ]);
  Widget wallet(Map<String,dynamic> d){
  final profile=d['profile'] as Map,cards=d['cards'] as List;
