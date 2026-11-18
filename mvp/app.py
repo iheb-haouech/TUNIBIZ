@@ -41,7 +41,7 @@ def csrf():
  if request.method=='POST' and (not session.get('csrf') or not secrets.compare_digest(request.headers.get('X-CSRF-Token',''),session['csrf'])):return err('Session invalide, rechargez la page',403)
 @app.after_request
 def security(r):
- r.headers['X-Content-Type-Options']='nosniff';r.headers['Referrer-Policy']='same-origin';r.headers['X-Frame-Options']='DENY'
+ r.headers['X-Content-Type-Options']='nosniff';r.headers['Referrer-Policy']='strict-origin-when-cross-origin' if request.path=='/nearby' else 'same-origin';r.headers['X-Frame-Options']='DENY'
  if request.path.startswith('/api'):r.headers['Cache-Control']='no-store'
  return r
 @app.get('/')
