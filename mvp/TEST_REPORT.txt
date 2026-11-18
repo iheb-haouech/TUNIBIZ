@@ -1,0 +1,21 @@
+PASS HTTP /
+PASS HTTP /business
+PASS HTTP /menu/demo
+PASS HTTP /manifest.webmanifest
+PASS HTTP /sw.js
+PASS HTTP /static/app.js
+PASS merchant auth required
+PASS csrf required
+PASS catalogue loaded
+PASS invalid order rejected
+PASS order creation + server price
+PASS reservation created
+PASS merchant login
+PASS order arrives in merchant dashboard
+PASS order accepted
+PASS order completed
+PASS sales updated
+PASS reservation confirmed
+PASS product created
+PASS product hidden
+PASS logout

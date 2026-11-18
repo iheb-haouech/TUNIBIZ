@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "TUNIBIZ Flutter (Android emulator)",
+      "type": "dart",
+      "request": "launch",
+      "program": "mobile/lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile",
+      "toolArgs": [
+        "--dart-define=API_BASE=http://10.0.2.2:8877"
+      ]
+    },
+    {
+      "name": "TUNIBIZ Flutter (USB adb reverse)",
+      "type": "dart",
+      "request": "launch",
+      "program": "mobile/lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile",
+      "toolArgs": [
+        "--dart-define=API_BASE=http://127.0.0.1:8877"
+      ]
+    }
+  ]
+}

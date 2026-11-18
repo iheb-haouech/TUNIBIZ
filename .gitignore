@@ -1,0 +1,26 @@
+# Runtime / sensitive files
+mvp/data/
+**/__pycache__/
+*.py[cod]
+.env
+.env.*
+*.sqlite*
+*.pem
+*.keystore
+*.jks
+**/key.properties
+# Local marketing archives and generated previews
+/video/
+mvp/*-preview.png
+# Flutter build / per-machine configuration
+**/.dart_tool/
+**/.flutter-plugins*
+**/build/
+**/.gradle/
+**/local.properties
+**/.idea/
+**/.metadata
+**/android/captures/
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/

@@ -1,0 +1,8 @@
+{
+  "dart.flutterSdkPath": "E:\\TUNIBIZ-Dev\\flutter",
+  "terminal.integrated.env.windows": {
+    "PUB_CACHE": "E:\\TUNIBIZ-Dev\\pub-cache",
+    "GRADLE_USER_HOME": "E:\\TUNIBIZ-Dev\\gradle"
+  },
+  "python.defaultInterpreterPath": "python"
+}
