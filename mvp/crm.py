@@ -118,10 +118,10 @@ def install(app, db, payload, clean, merchant, err):
   code=clean(payload().get('code'),100)
   with db() as c:a=c.execute('SELECT id,code_hash FROM crm_customers WHERE code_hash=?',(digest(code),)).fetchone()
   if not a:return err('Code de carte incorrect',401)
-  session['card']=a['id'];session['card_hash']=a['code_hash'];return jsonify(ok=True)
+  session.pop('wallet_card',None);session['card']=a['id'];session['card_hash']=a['code_hash'];return jsonify(ok=True)
  @app.post('/api/loyalty/logout')
  def card_logout():
-  session.pop('card',None);session.pop('card_hash',None);return jsonify(ok=True)
+  session.pop('wallet_card',None);session.pop('card',None);session.pop('card_hash',None);return jsonify(ok=True)
  @app.get('/api/loyalty')
  def card():
   with db() as c:

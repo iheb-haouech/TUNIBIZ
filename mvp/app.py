@@ -140,6 +140,8 @@ from nearby import install as install_nearby
 install_nearby(app, db, payload, clean, merchant, err)
 from loyalty_qr import install as install_qr
 install_qr(app,db,payload,merchant,err)
+from wallet import install as install_wallet
+install_wallet(app,db,payload,clean,err)
 if __name__=='__main__':
  print('TUNIBIZ local preview: http://127.0.0.1:8877',flush=True)
  app.run(host='127.0.0.1',port=8877,debug=False)

@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright
 P=pathlib.Path(__file__).parent
 with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  p=pathlib.Path(tmp)
- for file in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py']:shutil.copy2(P/file,p/file)
+ for file in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py']:shutil.copy2(P/file,p/file)
  shutil.copytree(P/'static',p/'static')
  server=subprocess.Popen([sys.executable,'-c',"from app import app;app.run(host='127.0.0.1',port=8879,debug=False)"],cwd=p,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  url='http://127.0.0.1:8879'

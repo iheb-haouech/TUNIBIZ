@@ -13,7 +13,7 @@ void main(){
   expect(find.byType(PremiumRing),findsOneWidget);
   expect(find.text('—'),findsOneWidget);
   await tester.tap(find.text('Ma carte fidélité'));await tester.pumpAndSettle();
-  expect(find.text('Connectez votre carte'),findsOneWidget);
+  expect(find.text('Connexion au portefeuille'),findsOneWidget);
   await tester.pageBack();await tester.pumpAndSettle();
   await tester.tap(find.widgetWithText(NavigationDestination,'Business'));await tester.pumpAndSettle();
   expect(find.text('Connexion commerçant'),findsOneWidget);

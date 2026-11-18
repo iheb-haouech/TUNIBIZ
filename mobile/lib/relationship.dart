@@ -5,6 +5,7 @@ import 'nearby.dart';
 import 'premium.dart';
 import 'loyalty_qr.dart';
 import 'reward_tile.dart';
+import 'wallet.dart';
 
 const navy=Color(0xFF091628), blue=Color(0xFF2563EB), teal=Color(0xFF2DD4BF);
 String money(dynamic v)=>((v as num)/1000).toStringAsFixed(3)+' DT';
@@ -18,7 +19,7 @@ class Home extends StatelessWidget{
  const Home({super.key});
  void open(BuildContext context,int index){
   if(index==0)return;
-  Navigator.push(context,MaterialPageRoute(builder:(_)=>index==2?const Nearby():Workspace(merchant:index==3)));
+  Navigator.push(context,MaterialPageRoute(builder:(_)=>index==2?const Nearby():index==3?const Workspace(merchant:true):ConsumerWallet(cardBuilder:(api,data)=>Workspace(merchant:false,sharedApi:api,initialData:data))));
  }
  @override Widget build(BuildContext context)=>Scaffold(backgroundColor:paper,body:SafeArea(bottom:false,child:ListView(padding:EdgeInsets.zero,children:[
  PremiumHero(name:'Bienvenue.',shop:'Vos commerces. Vos avantages.',description:'Connectez votre carte pour suivre vos points et découvrir vos récompenses.',action:'Ma carte fidélité',points:0,goal:100,signedIn:false,onAction:()=>open(context,1)),
@@ -30,14 +31,15 @@ class Home extends StatelessWidget{
  const Padding(padding:EdgeInsets.fromLTRB(20,0,20,20),child:Text('Prototype de test · Les photos illustrent les catégories, pas des offres actives.',style:TextStyle(color:muted,fontSize:12)))
  ])),bottomNavigationBar:PremiumNav(index:0,onSelected:(i)=>open(context,i)));
 }
-class Workspace extends StatefulWidget{final bool merchant;const Workspace({super.key,required this.merchant});@override State<Workspace> createState()=>_WorkspaceState();}
+class Workspace extends StatefulWidget{final bool merchant;final Api? sharedApi;final Map<String,dynamic>? initialData;const Workspace({super.key,required this.merchant,this.sharedApi,this.initialData});@override State<Workspace> createState()=>_WorkspaceState();}
 class _WorkspaceState extends State<Workspace>{
- final scroll=ScrollController();final api=Api();final email=TextEditingController(text:'demo@tunibiz.local'),secret=TextEditingController();Map<String,dynamic>? data;String message='';bool busy=false;int tab=0;
- @override void dispose(){scroll.dispose();email.dispose();secret.dispose();api.close();super.dispose();}
+ final scroll=ScrollController();late final Api api=widget.sharedApi??Api();final email=TextEditingController(text:'demo@tunibiz.local'),secret=TextEditingController();Map<String,dynamic>? data;String message='';bool busy=false;int tab=0;
+ @override void initState(){super.initState();data=widget.initialData;}
+ @override void dispose(){scroll.dispose();email.dispose();secret.dispose();if(widget.sharedApi==null)api.close();super.dispose();}
  Future<void> run(Future<void> Function() task)async{if(busy)return;setState((){busy=true;message='';});try{await task();}catch(e){if(mounted)setState(()=>message=e.toString());}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> refresh()async{final d=await api.call(widget.merchant?'/crm':'/loyalty');if(mounted)setState(()=>data=d);}
  Future<void> signIn()async=>run(()async{await api.init();await api.call(widget.merchant?'/login':'/loyalty/login',widget.merchant?{'email':email.text,'password':secret.text}:{'code':secret.text});secret.clear();await refresh();});
- Future<void> logout()async=>run(()async{await api.call(widget.merchant?'/logout':'/loyalty/logout',{});if(mounted)setState(()=>data=null);});
+ Future<void> logout()async=>run(()async{await api.call(widget.merchant?'/logout':'/loyalty/logout',{});if(mounted){if(widget.sharedApi!=null){Navigator.pop(context);}else{setState(()=>data=null);}}});
  Future<Map<String,String>?> fields(String title,Map<String,String> labels,{Map<String,String> initial=const {},List<String> optional=const []})async{
  final values=<String,String>{...initial};final form=GlobalKey<FormState>();
  return showDialog<Map<String,String>>(context:context,builder:(ctx)=>AlertDialog(title:Text(title),content:Form(key:form,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[for(final e in labels.entries)Padding(padding:const EdgeInsets.only(bottom:12),child:TextFormField(initialValue:initial[e.key]??'',decoration:InputDecoration(labelText:e.value),onSaved:(v)=>values[e.key]=(v??'').trim(),validator:(v)=>!optional.contains(e.key)&&(v==null||v.trim().isEmpty)?'Requis':null))]))),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:(){if(form.currentState!.validate()){form.currentState!.save();Navigator.pop(ctx,values);}},child:const Text('Valider'))]));
