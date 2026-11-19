@@ -3,6 +3,7 @@ import os,re,time,hashlib
 from flask import request,session,jsonify
 # Never record request bodies, IPs, tokens, coordinates, account IDs or arbitrary paths.
 EVENTS={
+ ('POST','/api/wallet/store-scan'):'store_scan',('POST','/api/crm/store-scan/decide'):'store_scan_review',
  ('GET','/api/crm'):'business_dashboard',('POST','/api/login'):'merchant_login',('POST','/api/logout'):'merchant_logout',
  ('POST','/api/merchant/register'):'merchant_registration',('POST','/api/crm/customer'):'customer_created',
  ('POST','/api/crm/customer/reset'):'card_reset',('POST','/api/crm/customer/consent'):'marketing_preference',

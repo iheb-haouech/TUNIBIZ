@@ -148,7 +148,7 @@ def install(app,db,payload,clean,err):
    row=c.execute('SELECT password FROM consumer_accounts WHERE id=?',(a['id'],)).fetchone()
    google_ok=bool(c.execute('SELECT 1 FROM google_accounts WHERE account_id=?',(a['id'],)).fetchone()) and int(session.get('google_reauth',0))>time.time()-300 and payload().get('confirm_google') is True
    if not row or not (google_ok or (pw and check_password_hash(row['password'],pw))):return err('Reconnectez-vous avec Google' if payload().get('confirm_google') is True else 'Mot de passe incorrect',401)
-   ids=[r['customer_id'] for r in c.execute('SELECT w.customer_id FROM wallet_cards w JOIN crm_customers a ON a.id=w.customer_id AND a.code_hash=w.card_hash WHERE w.account_id=?',(a['id'],))]
+   ids=[r['customer_id'] for r in c.execute('SELECT w.customer_id FROM wallet_cards w JOIN crm_customers a ON a.id=w.customer_id AND a.code_hash=w.card_hash WHERE w.account_id=? UNION SELECT m.customer_id FROM store_memberships m JOIN crm_customers x ON x.id=m.customer_id AND x.code_hash=m.card_hash WHERE m.account_id=? AND NOT EXISTS (SELECT 1 FROM wallet_cards w WHERE w.customer_id=m.customer_id AND w.account_id<>m.account_id)',(a['id'],a['id']))]
    for cid in ids:
     c.execute("UPDATE crm_customers SET name='Client anonymise',phone='',consent=0,code_hash=? WHERE id=?",(digest(secrets.token_urlsafe(32)),cid))
     c.execute("UPDATE loyalty_ledger SET label=CASE WHEN kind='purchase' THEN 'Achat' ELSE 'Recompense' END WHERE customer_id=?",(cid,))

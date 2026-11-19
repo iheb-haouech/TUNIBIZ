@@ -11,6 +11,7 @@ import 'reward_tile.dart';
 import 'wallet.dart';
 import 'business_dashboard.dart';
 import 'checkout_scanner.dart';
+import 'store_scan.dart';
 import 'merchant_enrollment.dart';
 
 const navy=Color(0xFF091628), blue=Color(0xFF2563EB), teal=Color(0xFF2DD4BF);
@@ -104,6 +105,7 @@ class _WorkspaceState extends State<Workspace>{
  Widget panel(Widget child)=>Card(child:Padding(padding:const EdgeInsets.all(16),child:child));
  Widget metric(String label,String value)=>panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(label),Text(value,style:const TextStyle(fontSize:25,fontWeight:FontWeight.bold))]));
  List<Widget> merchantView(Map<String,dynamic> d)=>[
+ if(tab==0||tab==1)FilledButton.icon(onPressed:busy?null:()async{await Navigator.push(context,MaterialPageRoute(builder:(_)=>StoreApprovals(api:api)));if(mounted)await run(refresh);},icon:const Icon(Icons.qr_code),label:const Text('QR du commerce & validations')),
  if(tab==0)BusinessDashboard(data:d,onQr:busy?null:identifyQr,onCustomer:busy?null:addCustomer,onCampaign:busy?null:campaign,onNearby:busy?null:()=>setState(()=>tab=4)),
  if(tab==1)const Text('Mes clients',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:ink)),
  if(tab==1)...[

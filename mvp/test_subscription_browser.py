@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright
 P=Path(__file__).parent
 with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  p=Path(tmp)
- for n in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py','merchant_dashboard.py','subscriptions.py','google_identity.py','analytics.py','password_recovery.py']:shutil.copy2(P/n,p/n)
+ for n in ['app.py','crm.py','leads.py','nearby.py','loyalty_qr.py','wallet.py','merchant_dashboard.py','subscriptions.py','google_identity.py','analytics.py','store_scan.py','password_recovery.py']:shutil.copy2(P/n,p/n)
  shutil.copytree(P/'static',p/'static')
  env={**os.environ,'TUNIBIZ_ADMIN_PASSWORD_HASH':generate_password_hash('QA-admin-passphrase')}
  server=subprocess.Popen([sys.executable,'-c',"from app import app;app.run(host='127.0.0.1',port=8879,debug=False)"],cwd=p,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)

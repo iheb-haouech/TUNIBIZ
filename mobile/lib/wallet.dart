@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'api.dart';
+import 'store_scan.dart';
 import 'password_recovery.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'premium.dart';
@@ -35,6 +36,20 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  final user=await google.authenticate();final token=user.authentication.idToken;
  if(token==null)throw Exception('Jeton Google indisponible');
  await api.call('/google/login',{'id_token':token});await refresh();
+ });
+ Future<void> scanMerchant()async{
+ final slug=await scanStore(context);if(!mounted||slug==null)return;
+ await run(()async{
+ final info=await api.call('/store/'+slug);if(!mounted)return;
+ final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:Text(info['shop']['name'].toString()),content:const Text('Rejoindre ce commerce ou demander la validation de votre achat ?'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Confirmer'))]));
+ if(ok!=true||!mounted)return;final r=await api.call('/wallet/store-scan',{'slug':slug});await refresh();
+ if(mounted)setState(()=>message=r['status']=='welcome'?'Bienvenue : +3 points !':'Demande envoyée. Le commerçant doit valider vos points.');
+ });
+ }
+ Future<void> scanHistory()async=>run(()async{
+ final d=await api.call('/wallet/store-scans');if(!mounted)return;
+ await showDialog<void>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Mes demandes QR'),content:SizedBox(width:300,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[if((d['requests'] as List).isEmpty)const Text('Aucune demande.'),for(final r in d['requests'])ListTile(title:Text(r['shop'].toString()),subtitle:Text(r['state']=='approved'?'+'+r['points'].toString()+' points':r['state']=='pending'?'En attente':r['state']=='rejected'?'Refusée':'Expirée'))]))),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Fermer'))]));
+ await refresh();
  });
  Future<void> addCard()async{
  final code=await showDialog<String>(context:context,builder:(ctx){String value='';return AlertDialog(title:const Text('Ajouter une carte'),content:TextField(autocorrect:false,obscureText:true,onChanged:(v)=>value=v,decoration:const InputDecoration(labelText:'Code personnel remis par le commerce',helperText:'Ce code est différent du QR temporaire.')),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,value.trim()),child:const Text('Ajouter'))]);});
@@ -79,6 +94,8 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  const SizedBox(height:10),Text('Bonjour '+profile['name'].toString(),style:const TextStyle(fontSize:29,color:Colors.white,fontWeight:FontWeight.w800)),Text(profile['email'].toString(),style:const TextStyle(color:Colors.white60)),const SizedBox(height:20),
  Row(children:[Expanded(child:stat(cards.length.toString(),'Cartes actives')),Expanded(child:stat(available.toString(),'Récompenses accessibles'))])
  ])),const SizedBox(height:18),
+ FilledButton.icon(onPressed:busy?null:scanMerchant,icon:const Icon(Icons.qr_code_scanner),label:const Text('Scanner le QR du commerce')),
+ OutlinedButton(onPressed:busy?null:scanHistory,child:const Text('Mes demandes QR')),
  FilledButton.icon(onPressed:busy?null:addCard,icon:const Icon(Icons.add_card),label:const Text('Ajouter une carte')),
  const SizedBox(height:10),const Text('Mes commerces',style:TextStyle(color:ink,fontSize:24,fontWeight:FontWeight.w800)),const Text('Les points ne sont pas transférables entre commerces.',style:TextStyle(color:muted,fontSize:12)),
  if(cards.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:30),child:Center(child:Text('Aucune carte. Demandez votre code au commerçant.'))),
