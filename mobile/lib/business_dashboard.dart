@@ -15,6 +15,8 @@ class _BusinessDashboardState extends State<BusinessDashboard>{
  @override Widget build(BuildContext context){
  final d=widget.data,stats=d['stats'] as Map,analytics=(d['dashboard'] as Map?)??{},all=(analytics['daily'] as List?)??[],daily=all.skip(math.max(0,all.length-days)).toList();
  final sum=daily.fold<num>(0,(n,r)=>n+(r['amount'] as num)),count=daily.fold<num>(0,(n,r)=>n+(r['purchases'] as num));
+ final pilot=(analytics['pilot'] as Map?)??{},subscription=analytics['subscription'] as Map?;
+ final pricedCount=daily.fold<num>(0,(n,r)=>n+((r['amount_purchases']??r['purchases']) as num));
  final buyers=(analytics['buyers'] as num?)??0,repeat=(analytics['repeat_buyers'] as num?)??0;
  final consent=(stats['customers'] as num)>0?((stats['consented'] as num)/(stats['customers'] as num)*100).round():0;
  final announcements=((d['campaigns'] as List?)??[]).where((o)=>campaignStatus(o)=='Active').take(2).toList();
@@ -23,6 +25,11 @@ class _BusinessDashboardState extends State<BusinessDashboard>{
  Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(gradient:const LinearGradient(colors:[ink,Color(0xFF174158)]),borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
  const Text('TUNIBIZ BUSINESS',style:TextStyle(color:mint,letterSpacing:2,fontSize:11,fontWeight:FontWeight.w800)),const SizedBox(height:10),Text((analytics['shop'] as Map?)?['name']?.toString()??'Votre commerce',style:const TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w800)),const SizedBox(height:8),Text(establishmentLabel(analytics['shop'] as Map?)+' · '+((analytics['shop'] as Map?)?['city']?.toString()??''),style:const TextStyle(color:Colors.white70)),const SizedBox(height:14),ClipRRect(borderRadius:BorderRadius.circular(14),child:OfferArtwork(offer:{'visual':(analytics['shop'] as Map?)?['category']??'general'},height:116)),const SizedBox(height:16),Text(dt(stats['spent'] as num),style:const TextStyle(color:mint,fontSize:34,fontWeight:FontWeight.w800)),const Text('Achats fidélité enregistrés · cumul',style:TextStyle(color:Colors.white70,fontSize:12))
  ])),const SizedBox(height:12),
+ if(subscription!=null)Card(child:ListTile(leading:const Icon(Icons.verified_outlined,color:cobalt),title:Text('Abonnement ${subscription['status']} · 19 DT / mois'),subtitle:Text('Prochaine échéance : ${subscription['paid_until']} (exclusive)'))),
+ if(pilot.isNotEmpty)...[
+ Row(children:[Expanded(child:metric('Nouveaux clients · 30 j',pilot['new_customers'].toString(),Icons.person_add_outlined)),const SizedBox(width:10),Expanded(child:metric('Clients actifs · 30 j',pilot['active_customers'].toString(),Icons.people_outline))]),
+ const SizedBox(height:10),Row(children:[Expanded(child:metric('Demandes QR en attente',pilot['pending_qr'].toString(),Icons.qr_code)),const SizedBox(width:10),Expanded(child:metric('Points distribués · cumul',pilot['points_issued'].toString(),Icons.stars_outlined))]),
+ const SizedBox(height:10),Row(children:[Expanded(child:metric('Coupons obtenus',pilot['coupons_claimed'].toString(),Icons.local_offer_outlined)),const SizedBox(width:10),Expanded(child:metric('Coupons utilisés',pilot['coupons_used'].toString(),Icons.done_all))]),const SizedBox(height:10)],
  Row(children:[Expanded(child:metric('Clients inscrits',stats['customers'].toString(),Icons.people_outline)),const SizedBox(width:10),Expanded(child:metric('Points en circulation',stats['points'].toString(),Icons.stars_outlined))]),
  const SizedBox(height:10),Row(children:[Expanded(child:metric('Consentement marketing',consent.toString()+' %',Icons.verified_user_outlined)),const SizedBox(width:10),Expanded(child:metric('Acheteurs récurrents',buyers>0?(repeat/buyers*100).round().toString()+' %':'—',Icons.repeat))]),
  const SizedBox(height:18),
@@ -35,10 +42,10 @@ class _BusinessDashboardState extends State<BusinessDashboard>{
  Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
  const Text('Activité des achats',style:TextStyle(fontWeight:FontWeight.w800,fontSize:20,color:ink)),
  const SizedBox(height:10),SegmentedButton<int>(segments:const [ButtonSegment(value:7,label:Text('7 jours')),ButtonSegment(value:30,label:Text('30 jours'))],selected:{days},onSelectionChanged:(v)=>setState(()=>days=v.first)),
- const SizedBox(height:12),Text(dt(sum),style:const TextStyle(fontWeight:FontWeight.w800,fontSize:25,color:ink)),Text(count.toString()+' achat(s) · '+(count>0?dt(sum/count):'—')+' panier moyen',style:const TextStyle(fontSize:12,color:muted)),
+ const SizedBox(height:12),Text(dt(sum),style:const TextStyle(fontWeight:FontWeight.w800,fontSize:25,color:ink)),Text(count.toString()+' achat(s) · '+(pricedCount>0?dt(sum/pricedCount)+' panier moyen renseigné':'montants non renseignés'),style:const TextStyle(fontSize:12,color:muted)),
  const SizedBox(height:12),if(daily.isNotEmpty)SizedBox(height:120,child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[for(final r in daily)Expanded(child:Padding(padding:const EdgeInsets.symmetric(horizontal:1),child:Tooltip(message:r['day'].toString()+' : '+dt(r['amount'] as num),child:Container(height:maxAmount>0?math.max(2,110*(r['amount'] as num)/maxAmount).toDouble():2,color:(r['amount'] as num)>0?cobalt:const Color(0xFFE5EDF3)))))])),
  if(daily.isNotEmpty)Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text(daily.first['day'].toString().substring(5),style:const TextStyle(color:muted,fontSize:11)),Text(daily.last['day'].toString().substring(5),style:const TextStyle(color:muted,fontSize:11))]),
- if(sum==0)const Text('Aucun achat sur cette période.',style:TextStyle(color:muted,fontSize:12)),
+ if(count==0)const Text('Aucun achat sur cette période.',style:TextStyle(color:muted,fontSize:12)),
  const SizedBox(height:10),const Text('Achats saisis dans TUNIBIZ, hors ventes non enregistrées. Jours de Tunis.',style:TextStyle(fontSize:11,color:muted))
  ])),const SizedBox(height:14),
  Row(children:[Expanded(child:metric('Campagnes actives',analytics['active_campaigns']?.toString()??'0',Icons.campaign_outlined)),const SizedBox(width:10),Expanded(child:metric('Offres Nearby actives',analytics['active_nearby']?.toString()??'0',Icons.radar))]),

@@ -1,4 +1,5 @@
 """Nearby offers: public campaign catalogue; visitor coordinates never sent here."""
+from business_clock import today as business_today
 from datetime import date
 import math
 from flask import jsonify, send_from_directory
@@ -15,7 +16,7 @@ def install(app,db,payload,clean,merchant,err):
  def nearby_page():return send_from_directory(app.static_folder,'nearby.html')
  @app.get('/api/nearby')
  def nearby():
-  today=date.today().isoformat()
+  today=business_today().isoformat()
   with db() as c:
    offers=[dict(r) for r in c.execute("""SELECT o.id,s.name shop,l.lat,l.lon,l.address,o.title,o.description,o.ends,o.category,COALESCE(o.radius_override,t.radius) radius FROM nearby_offers o JOIN nearby_locations l ON o.shop_id=l.shop_id JOIN shops s ON s.id=o.shop_id JOIN subscriptions t ON t.shop_id=s.id WHERE t.status='active' AND t.paid_until>date('now','+1 hour') AND l.location_confirmed=1 AND o.active=1 AND o.starts<=? AND o.ends>=? ORDER BY o.id DESC""",(today,today))]
   return jsonify(offers=offers)

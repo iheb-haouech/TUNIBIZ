@@ -1,5 +1,5 @@
 """Administrator-controlled distribution metadata. No APK is marked available until explicitly verified."""
-import hashlib,time,re
+import hashlib,time,re,json
 from flask import request,session,jsonify
 def install(app,db,payload,err):
  with db() as c:
@@ -26,4 +26,5 @@ def install(app,db,payload,err):
    old=latest(c)
    if old and code<=old['code']:return err('Le code de version doit augmenter',409)
    c.execute('INSERT INTO app_release VALUES(1,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version,code=excluded.code,url=excluded.url,sha256=excluded.sha256,notes=excluded.notes,created=excluded.created',(v,code,url,sha.lower(),notes,int(time.time())))
+   c.execute("INSERT INTO admin_operations(action,details) VALUES('app_release',?)",(json.dumps({'version':v,'code':code},sort_keys=True),))
   return jsonify(ok=True)

@@ -1,3 +1,4 @@
+from business_clock import today as business_today
 from flask import Flask, request, jsonify, session, send_from_directory, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from pathlib import Path
@@ -165,7 +166,7 @@ def order(slug):
 def reserve(slug):
  p=payload();name=clean(p.get('customer'));phone=clean(p.get('phone'),25);day=clean(p.get('day'),10);slot=clean(p.get('slot'),5);guests=p.get('guests')
  try:
-  if date.fromisoformat(day)<date.today():raise ValueError()
+  if date.fromisoformat(day)<business_today():raise ValueError()
   datetime.strptime(slot,'%H:%M')
  except ValueError:return err('Date ou heure incorrecte')
  if not name or not re.fullmatch(r'[+0-9 ()-]{8,25}',phone) or type(guests)is not int or not 1<=guests<=30:return err('Vérifiez les informations')

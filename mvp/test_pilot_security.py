@@ -15,6 +15,10 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  import app as module
  import verification as verification
  from backup_db import backup
+ from business_clock import today
+ from datetime import datetime,timezone
+ assert str(today(datetime(2026,11,19,22,59,tzinfo=timezone.utc)))=='2026-11-19'
+ assert str(today(datetime(2026,11,19,23,0,tzinfo=timezone.utc)))=='2026-11-20'
  app,db=module.app,module.db
  @app.get('/api/qa-busy')
  def busy():raise sqlite3.OperationalError('private-path-and-query')
@@ -59,6 +63,9 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  assert get(a,'/wallet').json['cards'][0]['points']==8
  with db() as c:assert c.execute("SELECT COUNT(*) FROM loyalty_ledger WHERE kind='scan'").fetchone()[0]==1
  assert get(m,'/crm').json['dashboard']['buyers']==1
+ assert get(m,'/crm').json['dashboard']['pilot']['points_issued']==8
+ assert get(m,'/crm').json['dashboard']['pilot']['active_customers']==1
+ assert get(m,'/crm').json['dashboard']['pilot']['pending_qr']==0
  cid=get(a,'/wallet').json['cards'][0]['id']
  # One merchant cannot reserve a system or another merchant's idempotency key.
  key='welcome:999'

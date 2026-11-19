@@ -1,6 +1,7 @@
 """TUNIBIZ CRM + Loyalty, local MVP. Amounts in millimes; 1 point / whole DT."""
 import secrets, hashlib, re
 from merchant_dashboard import dashboard
+from business_clock import today as business_today
 from datetime import date, timedelta
 from flask import request, jsonify, session, send_from_directory
 def install(app, db, payload, clean, merchant, err):
@@ -28,7 +29,7 @@ def install(app, db, payload, clean, merchant, err):
  def segment_ok(a,segment):
   if segment=='all':return True
   if segment=='vip':return a['spent']>=100000
-  if segment=='inactive':return bool(a['last_purchase'] and a['last_purchase'][:10]<(date.today()-timedelta(days=30)).isoformat())
+  if segment=='inactive':return bool(a['last_purchase'] and a['last_purchase'][:10]<(business_today()-timedelta(days=30)).isoformat())
   return False
  def campaigns(c,sid):return listrows(c,'SELECT * FROM campaigns WHERE shop_id=? ORDER BY id DESC',(sid,))
  def rewards(c,sid):return listrows(c,'SELECT * FROM rewards WHERE shop_id=? ORDER BY id DESC',(sid,))
@@ -152,7 +153,7 @@ def install(app, db, payload, clean, merchant, err):
   with db() as c:
    row=c.execute('SELECT id,shop_id FROM crm_customers WHERE id=? AND code_hash=?',(session.get('card'),session.get('card_hash'))).fetchone()
    if not row:return err('Connectez votre carte',401)
-   a=getcustomer(c,row['shop_id'],row['id']);today=date.today().isoformat()
+   a=getcustomer(c,row['shop_id'],row['id']);today=business_today().isoformat()
    enabled=c.execute("SELECT 1 FROM subscriptions WHERE shop_id=? AND status='active' AND paid_until>date('now','+1 hour')",(row['shop_id'],)).fetchone()
    cs=[{k:x[k] for k in ('id','title','description','ends','visual')} for x in campaigns(c,row['shop_id']) if enabled and a['consent'] and x['active'] and x['starts']<=today<=x['ends'] and segment_ok(a,x['segment'])]
    rs=[{k:x[k] for k in ('id','title','cost','visual','description')} for x in rewards(c,row['shop_id']) if enabled and x['active']]
