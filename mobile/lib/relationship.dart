@@ -46,9 +46,9 @@ class Workspace extends StatefulWidget{final bool merchant;final Api? sharedApi;
 class _WorkspaceState extends State<Workspace>{
  final scroll=ScrollController();late final Api api=widget.sharedApi??Api(scope:widget.merchant?'merchant':'legacy');final email=TextEditingController(),secret=TextEditingController();Map<String,dynamic>? data;String message='';bool busy=false;int tab=0;
  @override void initState(){super.initState();data=widget.initialData;if(widget.sharedApi==null&&data==null)restoreSession();}
- Future<void> restoreSession()async{try{if(await api.restore()&&mounted)await run(()async{await api.init();await refresh();});}catch(_){}}
+ Future<void> restoreSession()async{await run(()async{if(await api.restore()&&mounted){await api.init();await refresh();}});}
  @override void dispose(){scroll.dispose();email.dispose();secret.dispose();if(widget.sharedApi==null)api.close();super.dispose();}
- Future<void> run(Future<void> Function() task)async{if(busy)return;setState((){busy=true;message='';});try{await task();}catch(e){if(mounted)setState(()=>message=e.toString());}finally{if(mounted)setState(()=>busy=false);}}
+ Future<void> run(Future<void> Function() task)async{if(busy)return;setState((){busy=true;message='';});try{await task();}catch(e){if(mounted)setState((){if(e is SessionExpired)data=null;message=e.toString();});}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> refresh()async{final d=await api.call(widget.merchant?'/crm':'/loyalty');if(mounted)setState(()=>data=d);}
  Future<void> signIn()async=>run(()async{await api.init();await api.call(widget.merchant?'/login':'/loyalty/login',widget.merchant?{'email':email.text,'password':secret.text}:{'code':secret.text});secret.clear();await refresh();});
  Future<void> logout()async=>run(()async{await api.call(widget.merchant?'/logout':'/loyalty/logout',{});if(mounted){if(widget.sharedApi!=null){Navigator.pop(context);}else{setState(()=>data=null);}}});

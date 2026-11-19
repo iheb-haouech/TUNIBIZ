@@ -33,8 +33,8 @@ def install(app,db,payload,clean,err):
   if isinstance(old,str):c.execute('DELETE FROM wallet_sessions WHERE digest=?',(digest(old),))
   token=secrets.token_urlsafe(32);now=int(time.time())
   c.execute('DELETE FROM wallet_sessions WHERE expires<=?',(now,))
-  c.execute('INSERT INTO wallet_sessions VALUES(?,?,?)',(digest(token),aid,now+7*86400))
-  clear_card();session.pop('google_reauth',None);session['wallet_token']=token
+  c.execute('INSERT INTO wallet_sessions VALUES(?,?,?)',(digest(token),aid,now+30*86400))
+  clear_card();session.pop('google_reauth',None);session['wallet_token']=token;session.permanent=True
  @app.before_request
  def guard_wallet_selection():
   if not session.get('wallet_card'):return

@@ -19,12 +19,12 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  Map<String,dynamic>? data;bool registering=false,busy=false;String message='';
  Timer? poll;bool polling=false;Map<String,String> seen={};
  @override void initState(){super.initState();if(widget.apiOverride==null)restoreSession();poll=Timer.periodic(const Duration(seconds:30),(_)=>checkRequests());}
- Future<void> restoreSession()async{try{if(await api.restore()&&mounted)await run(()async{await api.init();await refresh();});}catch(_){}}
+ Future<void> restoreSession()async{await run(()async{if(await api.restore()&&mounted){await api.init();await refresh();}});}
  Future<void> checkRequests()async{if(!mounted||data==null||busy||polling||WidgetsBinding.instance.lifecycleState!=AppLifecycleState.resumed||ModalRoute.of(context)?.isCurrent!=true)return;polling=true;try{final d=await api.call('/wallet/store-scans');if(!mounted||data==null)return;for(final r in d['requests']){final id=r['id'].toString(),state=r['state'].toString();if(seen[id]=='pending'&&(state=='approved'||state=='rejected')){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(state=='approved'?'Achat validé : +'+r['points'].toString()+' points':'Demande refusée')));await refresh();}seen[id]=state;}}catch(_){}finally{polling=false;}}
  @override void dispose(){poll?.cancel();name.dispose();email.dispose();password.dispose();if(widget.apiOverride==null)api.close();super.dispose();}
  Future<void> run(Future<void> Function() fn)async{
  if(busy)return;setState((){busy=true;message='';});
- try{await fn();}catch(e){if(mounted)setState(()=>message=e.toString().replaceFirst('Exception: ',''));}
+ try{await fn();}catch(e){if(mounted)setState((){if(e is SessionExpired)data=null;message=e.toString().replaceFirst('Exception: ','');});}
  finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> refresh()async{final d=await api.call('/wallet');if(mounted)setState(()=>data=d);}

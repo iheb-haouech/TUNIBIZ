@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, session, send_from_directory, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from pathlib import Path
 import sqlite3, secrets, json, re, os, hashlib, time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 ROOT=Path(__file__).parent
 PRODUCTION=os.environ.get('TUNIBIZ_ENV')=='production'
 if PRODUCTION:
@@ -17,7 +17,7 @@ if not PRODUCTION:
  key=DATA/'secret';key.write_text(secrets.token_hex(32)) if not key.exists() else None
  secret=key.read_text()
 app=Flask(__name__,static_folder='static')
-app.config.update(SECRET_KEY=secret,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SECURE=PRODUCTION,SESSION_COOKIE_SAMESITE='Lax',MAX_CONTENT_LENGTH=32768)
+app.config.update(SECRET_KEY=secret,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SECURE=PRODUCTION,SESSION_COOKIE_SAMESITE='Lax',MAX_CONTENT_LENGTH=32768,PERMANENT_SESSION_LIFETIME=timedelta(days=30),SESSION_REFRESH_EACH_REQUEST=False)
 def db():
  c=sqlite3.connect(DATA/'tunibiz.sqlite',timeout=10);c.row_factory=sqlite3.Row;c.execute('PRAGMA foreign_keys=ON');return c
 def init():
@@ -111,8 +111,8 @@ def login():
  with db() as c:
   c.execute('DELETE FROM merchant_sessions WHERE expires<=?',(now,))
   if isinstance(old,str):c.execute('DELETE FROM merchant_sessions WHERE digest=?',(merchant_digest(old),))
-  c.execute('INSERT INTO merchant_sessions VALUES(?,?,?)',(merchant_digest(token),u['id'],now+28800))
- session.pop('shop',None);session.pop('merchant_until',None);session['merchant_token']=token
+  c.execute('INSERT INTO merchant_sessions VALUES(?,?,?)',(merchant_digest(token),u['id'],now+30*86400))
+ session.pop('shop',None);session.pop('merchant_until',None);session['merchant_token']=token;session.permanent=True
  return jsonify(ok=True)
 @app.post('/api/logout')
 def logout():

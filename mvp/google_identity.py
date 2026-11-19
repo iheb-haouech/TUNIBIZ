@@ -31,9 +31,9 @@ def install(app,db,payload,err,throttle):
    old=session.get('wallet_token')
    if isinstance(old,str):c.execute('DELETE FROM wallet_sessions WHERE digest=?',(hashlib.sha256(old.encode()).hexdigest(),))
    token=secrets.token_urlsafe(32)
-   c.execute('INSERT INTO wallet_sessions VALUES(?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),aid,int(time.time())+7*86400))
+   c.execute('INSERT INTO wallet_sessions VALUES(?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),aid,int(time.time())+30*86400))
   for k in ('card','card_hash','wallet_card'):session.pop(k,None)
-  session['wallet_token']=token
+  session['wallet_token']=token;session.permanent=True
   session['google_reauth']=int(time.time())
  @app.get('/api/google/config')
  def google_config():return jsonify(enabled=enabled(),client_id=config()[0] if enabled() else '')
