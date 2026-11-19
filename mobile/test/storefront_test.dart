@@ -19,9 +19,9 @@ void main(){
  await t.pumpWidget(MaterialApp(home:StoresPage(api:api)));await t.pumpAndSettle();
  expect(find.text('Café QA'),findsOneWidget);
  await t.tap(find.text('Mes commerces uniquement'));await t.pumpAndSettle();expect(find.text('Boutique QA'),findsNothing);
- await t.tap(find.text('Café QA'));await t.pumpAndSettle();
- await t.ensureVisible(find.text('Pack déjeuner'));expect(find.text('15.000 DT'),findsOneWidget);expect(find.text('20.000 DT'),findsOneWidget);
- await t.scrollUntilVisible(find.text('Obtenir mon coupon'),150);await t.ensureVisible(find.text('Obtenir mon coupon'));await t.pumpAndSettle();await t.tap(find.text('Obtenir mon coupon'));await t.pumpAndSettle();
+ await t.scrollUntilVisible(find.text('Café QA'),120,scrollable:find.byType(Scrollable).first);await t.ensureVisible(find.text('Café QA'));await t.pumpAndSettle();await t.tap(find.text('Café QA').hitTestable());await t.pumpAndSettle();
+ await t.scrollUntilVisible(find.text('Pack déjeuner'),120,scrollable:find.byType(Scrollable).first);await t.ensureVisible(find.text('Pack déjeuner'));expect(find.text('15.000 DT'),findsOneWidget);expect(find.text('20.000 DT'),findsOneWidget);
+ await t.scrollUntilVisible(find.text('Obtenir mon coupon'),150,scrollable:find.byType(Scrollable).first);await t.ensureVisible(find.text('Obtenir mon coupon'));await t.pumpAndSettle();await t.tap(find.text('Obtenir mon coupon'));await t.pumpAndSettle();
  expect(api.claimed,isTrue);await t.ensureVisible(find.text('TN-ABCDEF123456'));expect(find.text('TN-ABCDEF123456'),findsOneWidget);
  expect(t.takeException(),isNull);
  });

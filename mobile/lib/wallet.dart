@@ -8,32 +8,45 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'premium.dart';
 
 typedef CardBuilder = Widget Function(Api api,Map<String,dynamic> data);
+class ConsumerWalletController extends ChangeNotifier{
+ bool _scanRequested=false;
+ void requestScan(){_scanRequested=true;notifyListeners();}
+ bool takeScanRequest(){final value=_scanRequested;_scanRequested=false;return value;}
+}
 Future<void>? googleInitialization;
 class ConsumerWallet extends StatefulWidget{
- final CardBuilder cardBuilder;final Api? apiOverride;final bool scanOnOpen;final Future<String?> Function(BuildContext)? scannerOverride;
- const ConsumerWallet({super.key,required this.cardBuilder,this.apiOverride,this.scanOnOpen=false,this.scannerOverride});
+ final CardBuilder cardBuilder;final Api? apiOverride;final bool scanOnOpen,active;final ConsumerWalletController? controller;final Future<String?> Function(BuildContext)? scannerOverride;
+ const ConsumerWallet({super.key,required this.cardBuilder,this.apiOverride,this.scanOnOpen=false,this.scannerOverride,this.controller,this.active=true});
  @override State<ConsumerWallet> createState()=>_ConsumerWalletState();
 }
 class _ConsumerWalletState extends State<ConsumerWallet>{
  late final Api api=widget.apiOverride??Api(scope:'wallet');
  final name=TextEditingController(),email=TextEditingController(),password=TextEditingController();
- Map<String,dynamic>? data;bool registering=false,busy=false;String message='';
+ Map<String,dynamic>? data,verification;bool registering=false,busy=false;String message='';
  Timer? poll;bool polling=false,restoring=true,scanPending=false,scanning=false;Map<String,String> seen={};
- @override void initState(){super.initState();scanPending=widget.scanOnOpen;restoreSession();poll=Timer.periodic(const Duration(seconds:30),(_)=>checkRequests());}
+ @override void initState(){super.initState();scanPending=widget.scanOnOpen||(widget.controller?.takeScanRequest()??false);widget.controller?.addListener(requestedScan);restoreSession();poll=Timer.periodic(const Duration(seconds:30),(_)=>checkRequests());}
+ void requestedScan(){if(widget.controller?.takeScanRequest()==true){scanPending=true;maybeScan();}}
  Future<void> restoreSession()async{
  await run(()async{if(await api.restore()&&mounted){await api.init();await refresh();}});
  if(mounted)setState(()=>restoring=false);maybeScan();
  }
  void maybeScan(){if(!mounted||!scanPending||restoring||busy||data==null)return;scanPending=false;WidgetsBinding.instance.addPostFrameCallback((_) {if(mounted)scanMerchant();});}
 
- Future<void> checkRequests()async{if(!mounted||data==null||busy||polling||WidgetsBinding.instance.lifecycleState!=AppLifecycleState.resumed||ModalRoute.of(context)?.isCurrent!=true)return;polling=true;try{final d=await api.call('/wallet/store-scans');if(!mounted||data==null)return;for(final r in d['requests']){final id=r['id'].toString(),state=r['state'].toString();if(seen[id]=='pending'&&(state=='approved'||state=='rejected')){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(state=='approved'?'Achat validé : +'+r['points'].toString()+' points':'Demande refusée')));await refresh();}seen[id]=state;}}catch(_){}finally{polling=false;}}
- @override void dispose(){poll?.cancel();name.dispose();email.dispose();password.dispose();if(widget.apiOverride==null)api.close();super.dispose();}
+ Future<void> checkRequests()async{if(!mounted||!widget.active||data==null||busy||polling||WidgetsBinding.instance.lifecycleState!=AppLifecycleState.resumed||ModalRoute.of(context)?.isCurrent!=true)return;polling=true;try{final d=await api.call('/wallet/store-scans');if(!mounted||data==null)return;for(final r in d['requests']){final id=r['id'].toString(),state=r['state'].toString();if(seen[id]=='pending'&&(state=='approved'||state=='rejected')){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(state=='approved'?'Achat validé : +'+r['points'].toString()+' points':'Demande refusée')));await refresh();}seen[id]=state;}}catch(_){}finally{polling=false;}}
+ @override void dispose(){widget.controller?.removeListener(requestedScan);poll?.cancel();name.dispose();email.dispose();password.dispose();if(widget.apiOverride==null)api.close();super.dispose();}
  Future<void> run(Future<void> Function() fn)async{
  if(busy)return;setState((){busy=true;message='';});
  try{await fn();}catch(e){if(mounted)setState((){if(e is SessionExpired)data=null;message=e.toString().replaceFirst('Exception: ','');});}
  finally{if(mounted)setState(()=>busy=false);maybeScan();}
  }
- Future<void> refresh()async{final d=await api.call('/wallet');if(mounted)setState(()=>data=d);}
+ Future<void> refresh()async{
+ final d=await api.call('/wallet');if(mounted)setState(()=>data=d);
+ try{final v=await api.call('/verification/status');if(mounted)setState(()=>verification=v);}catch(_){/* Wallet stays available if email delivery is temporarily unavailable. */}
+ }
+ Future<void> verifyEmail()async=>run(()async{
+ final result=await api.call('/verification/request',{});
+ if(mounted)setState(()=>message=result['message']?.toString()??'Lien envoyé. Consultez votre boîte mail.');
+ });
  Future<void> signIn()async{
  if(!email.text.contains('@')||password.text.isEmpty||(registering&&(name.text.trim().isEmpty||password.text.length<12))){setState(()=>message='Vérifiez vos informations. Nouveau compte : 12 caractères minimum.');return;}
  await run(()async{await api.init();await api.call(registering?'/wallet/register':'/wallet/login',{'name':name.text.trim(),'email':email.text.trim(),'password':password.text});password.clear();await refresh();});
@@ -65,8 +78,8 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  await showModalBottomSheet<void>(context:context,useSafeArea:true,showDragHandle:true,builder:(ctx)=>SingleChildScrollView(child:Padding(padding:const EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,children:[
  Icon(r['status']=='welcome'?Icons.celebration_outlined:Icons.hourglass_top,color:cobalt,size:54),
  const SizedBox(height:12),Text(shop,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:22)),
- Text(r['status']=='welcome'?'+3 points de bienvenue':'Achat en attente de validation',style:const TextStyle(fontSize:18,fontWeight:FontWeight.bold)),
- const SizedBox(height:8),Text(r['status']=='welcome'?'Votre carte est créée.':'Présentez cet écran au commerçant. Il valide l’achat et choisit les points.',textAlign:TextAlign.center),
+ Text(r['status']=='welcome'?((r['points'] as num? ?? 0)>0?'+${r['points']} points de bienvenue':'Carte retrouvée · bonus déjà reçu'):'Achat en attente de validation',style:const TextStyle(fontSize:18,fontWeight:FontWeight.bold)),
+ const SizedBox(height:8),Text(r['status']=='welcome'?((r['points'] as num? ?? 0)>0?'Votre carte est créée.':'Votre carte est disponible. Le bonus de bienvenue est attribué une seule fois par email et par commerce.'):'Présentez cet écran au commerçant. Il valide l’achat et choisit les points.',textAlign:TextAlign.center),
  const SizedBox(height:12),FilledButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Terminé'))
  ]))));
  }finally{scanning=false;}
@@ -119,6 +132,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  const SizedBox(height:10),Text('Bonjour '+profile['name'].toString(),style:const TextStyle(fontSize:29,color:Colors.white,fontWeight:FontWeight.w800)),Text(profile['email'].toString(),style:const TextStyle(color:Colors.white60)),const SizedBox(height:20),
  Row(children:[Expanded(child:stat(cards.length.toString(),'Mes cartes')),Expanded(child:stat(available.toString(),'Récompenses accessibles'))])
  ])),const SizedBox(height:18),
+ if(verification!=null&&verification!['verified']!=true)Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[const Text('Vérifiez votre email',style:TextStyle(fontWeight:FontWeight.bold)),Text(verification!['required']==true?'La vérification est requise pour les nouveaux scans de commerce.':'Confirmez votre adresse pour sécuriser votre compte.'),if(verification!['delivery_enabled']==true)TextButton.icon(onPressed:busy?null:verifyEmail,icon:const Icon(Icons.mark_email_read_outlined),label:const Text('Recevoir le lien de vérification'))else const Text('Envoi temporairement indisponible. Réessayez plus tard.')]))),
  FilledButton.icon(onPressed:busy?null:scanMerchant,icon:const Icon(Icons.qr_code_scanner),label:const Text('Scanner le QR du commerce')),
  FilledButton.tonalIcon(onPressed:busy?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>StoresPage(api:api))),icon:const Icon(Icons.storefront),label:const Text('Tous les établissements & offres')),
  OutlinedButton(onPressed:busy?null:scanHistory,child:const Text('Mes demandes QR')),

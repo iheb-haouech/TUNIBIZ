@@ -1,26 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:tunibiz_mobile/reward_tile.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tunibiz_mobile/main.dart';
 import 'package:tunibiz_mobile/premium.dart';
-import 'package:tunibiz_mobile/reward_tile.dart';
+import 'package:tunibiz_mobile/api.dart';
+import 'package:tunibiz_mobile/consumer_shell.dart';
+class ShellApi extends Api {
+ @override Future<bool> restore() async => false;
+ @override Future<void> init() async {}
+ @override Future<Map<String,dynamic>> call(String path,[Map<String,dynamic>? body]) async {
+  if(path=='/stores')return {'stores':[]};
+  throw StateError(path);
+ }
+}
+
 void main(){
  test('amount is formatted in Tunisian dinars',(){expect(money(3500),'3.500 DT');});
- testWidgets('premium home opens loyalty, Nearby and merchant journeys',(tester) async {
-  tester.view.physicalSize=const Size(390,844); tester.view.devicePixelRatio=1;
+ testWidgets('five consumer tabs preserve navigation and scanner requires account', (tester) async {
+  tester.view.physicalSize=const Size(320,700);tester.view.devicePixelRatio=1;
   addTearDown(tester.view.resetPhysicalSize);addTearDown(tester.view.resetDevicePixelRatio);
-  await tester.pumpWidget(const Tunibiz());await tester.pumpAndSettle();
-  expect(find.text('Ma carte fidélité'),findsOneWidget);
-  expect(find.byType(PremiumRing),findsOneWidget);
-  expect(find.text('—'),findsOneWidget);
-  await tester.tap(find.text('Ma carte fidélité'));await tester.pumpAndSettle();
+  final api=ShellApi();addTearDown(api.close);
+  await tester.pumpWidget(MaterialApp(home:ConsumerShell(apiOverride:api,cardBuilder:(_,__)=>const SizedBox(),businessBuilder:()=>const Scaffold(body:Text('Business QA')))));
+  await tester.pumpAndSettle();
+  expect(find.byType(NavigationDestination),findsNWidgets(5));
+  expect(find.text('Le commerce local vous récompense.'),findsOneWidget);
+  await tester.tap(find.widgetWithText(NavigationDestination,'Établissements'));await tester.pumpAndSettle();
+  expect(find.text('Nos établissements'),findsOneWidget);
+  await tester.tap(find.widgetWithText(NavigationDestination,'Scanner'));await tester.pumpAndSettle();
   expect(find.text('Connexion au portefeuille'),findsOneWidget);
-  await tester.pageBack();await tester.pumpAndSettle();
-  await tester.tap(find.widgetWithText(NavigationDestination,'Business'));await tester.pumpAndSettle();
-  expect(find.text('Connexion commerçant'),findsOneWidget);
-  await tester.pageBack();await tester.pumpAndSettle();
+  await tester.enterText(find.widgetWithText(TextField,'Email'),'saved@example.test');
   await tester.tap(find.widgetWithText(NavigationDestination,'Nearby'));await tester.pumpAndSettle();
   expect(find.text('TUNIBIZ Nearby'),findsOneWidget);
+  await tester.tap(find.widgetWithText(NavigationDestination,'Portefeuille'));await tester.pumpAndSettle();
+  expect(find.text('saved@example.test'),findsOneWidget);
   expect(tester.takeException(),isNull);
+  await tester.pumpWidget(const SizedBox());await tester.pumpAndSettle();
  });
  testWidgets('premium ring uses real points and remains within small layout',(tester) async{
   tester.view.physicalSize=const Size(320,640);tester.view.devicePixelRatio=1;
