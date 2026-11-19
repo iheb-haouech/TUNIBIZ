@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'api.dart';
-const currentVersion='0.5.0';
-const currentVersionCode=7;
+const currentVersion='0.5.1';
+const currentVersionCode=8;
 bool validRelease(Map<String,dynamic> r){
  final v=r['version'],code=r['code'],url=r['url'],sha=r['sha256'];
  return v is String&&RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(v)&&code is int&&code>currentVersionCode&&sha is String&&RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(sha)&&url=='https://github.com/iheb-haouech/TUNIBIZ/releases/download/v'+v+'/TUNIBIZ-v'+v+'.apk';

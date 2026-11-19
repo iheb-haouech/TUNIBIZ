@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'api.dart';
+import 'push_preferences.dart';
 import 'store_scan.dart';
 import 'storefront.dart';
 import 'password_recovery.dart';
@@ -105,12 +106,12 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Retirer cette carte ?'),content:const Text('Les points restent chez le commerçant. Vous pourrez rattacher la carte avec son code personnel valide.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Retirer'))]));
  if(ok==true&&mounted)await run(()async{await api.call('/wallet/unlink',{'id':id});await refresh();});
  }
- Future<void> logout()async=>run(()async{await api.call('/wallet/logout',{});seen.clear();if(mounted)setState(()=>data=null);});
+ Future<void> logout()async=>run(()async{await api.call('/wallet/logout',{});await PushPreferences.clearConsent(api);seen.clear();if(mounted)setState(()=>data=null);});
  Future<void> deleteAccount()async{
  final google=data?['profile']?['google_linked']==true;
  final pw=await showDialog<String>(context:context,builder:(ctx){String value='';return AlertDialog(title:const Text('Supprimer mon compte'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[const Text('Action irreversible : profil, sessions et cartes rattachees seront supprimes ou anonymises. Les transactions sans nom ou telephone restent dans les registres des commerces. Les points rattaches ne seront plus accessibles.'),const SizedBox(height:12),if(google)const Text('Une connexion Google recente est requise (5 minutes).')else TextField(obscureText:true,onChanged:(v)=>value=v,decoration:const InputDecoration(labelText:'Confirmer le mot de passe'))])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,value),child:const Text('Supprimer definitivement'))]);});
  if(!mounted||pw==null||(!google&&pw.isEmpty))return;
- await run(()async{await api.call('/wallet/delete',{'password':pw,'confirm_google':google});if(mounted)setState((){data=null;message='Compte supprime.';});});
+ await run(()async{await api.call('/wallet/delete',{'password':pw,'confirm_google':google});await PushPreferences.clearConsent(api);if(mounted)setState((){data=null;message='Compte supprime.';});});
  }
  Widget login()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
  Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(gradient:const LinearGradient(colors:[ink,Color(0xFF174158)]),borderRadius:BorderRadius.circular(23)),child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(Icons.account_balance_wallet_outlined,color:mint,size:40),SizedBox(height:18),Text('Toutes vos cartes. Un seul compte.',style:TextStyle(fontSize:31,fontWeight:FontWeight.w800,color:Colors.white)),SizedBox(height:10),Text('Gardez les points de chaque commerce, gratuitement.',style:TextStyle(color:Colors.white70))])),
@@ -140,6 +141,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  const SizedBox(height:10),const Text('Mes commerces',style:TextStyle(color:ink,fontSize:24,fontWeight:FontWeight.w800)),const Text('Les points ne sont pas transférables entre commerces.',style:TextStyle(color:muted,fontSize:12)),
  if(cards.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:30),child:Center(child:Text('Aucune carte. Scannez le QR d’un commerce pour commencer.'))),
  for(final card in cards)Padding(padding:const EdgeInsets.only(top:12),child:WalletCard(card:Map<String,dynamic>.from(card),onOpen:busy?null:()=>selectCard(card['id'] as int),onStore:busy||card['shop_id']==null||card['archived']==1?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>StorePage(api:api,id:card['shop_id'] as int))),onRemove:busy?null:()=>unlink(card['id'] as int))),
+ if(PushPreferences.supported(api)) PushPreferences(api:api),
  if(profile['google_linked']==true)TextButton(onPressed:busy?null:signInGoogle,child:const Text('Reconnexion Google')),
  const SizedBox(height:28),TextButton(onPressed:busy?null:deleteAccount,child:const Text('Supprimer mon compte',style:TextStyle(color:Colors.red))),
  ]);

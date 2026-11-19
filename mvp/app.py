@@ -236,6 +236,8 @@ from verification import install as install_verification
 install_verification(app,db,payload,err,throttle,PRODUCTION)
 from pilot_security import install as install_pilot_security
 install_pilot_security(app,db,err,throttle)
+from push_notifications import install as install_push_notifications
+install_push_notifications(app,db,payload,err,throttle)
 if __name__=='__main__':
  if PRODUCTION:raise RuntimeError('Use a production WSGI server, not Flask development server')
  print('TUNIBIZ local preview: http://127.0.0.1:8877',flush=True)
