@@ -52,7 +52,12 @@ def install(app,db,payload,err):
    business=dict(c.execute("""SELECT (SELECT COUNT(*) FROM consumer_accounts) consumers,(SELECT COUNT(*) FROM wallet_cards w JOIN crm_customers a ON a.id=w.customer_id AND a.code_hash=w.card_hash) cards,(SELECT COUNT(*) FROM shops) shops,(SELECT COUNT(*) FROM subscriptions WHERE status='active' AND paid_until>date('now','+1 hour')) active_shops,(SELECT COALESCE(SUM(amount),0) FROM cash_payments) cash_millimes,(SELECT COUNT(*) FROM loyalty_ledger WHERE kind='purchase') loyalty_purchases,(SELECT COUNT(*) FROM wallet_sessions WHERE expires>?) wallet_sessions""",(int(time.time()),)).fetchone())
    events=[dict(r) for r in c.execute("SELECT platform,event,SUM(n) count FROM analytics_daily WHERE day>=date('now','+1 hour','-29 days') GROUP BY platform,event ORDER BY count DESC")]
    daily=[dict(r) for r in c.execute("SELECT day,platform,SUM(n) count FROM analytics_daily WHERE day>=date('now','+1 hour','-29 days') GROUP BY day,platform ORDER BY day")]
-  return jsonify(business=business,events=events,daily=daily,period_days=30)
+   for status in ('pending','blocked','archived'):
+    business[status+'_shops']=c.execute('SELECT COUNT(*) FROM subscriptions WHERE status=?',(status,)).fetchone()[0]
+   business['expired_shops']=c.execute("SELECT COUNT(*) FROM subscriptions WHERE status='active' AND paid_until<=date('now','+1 hour')").fetchone()[0]
+   business['monthly_cash_millimes']=c.execute("SELECT COALESCE(SUM(amount),0) FROM cash_payments WHERE strftime('%Y-%m',created,'+1 hour')=strftime('%Y-%m','now','+1 hour')").fetchone()[0]
+   monthly_cash=[dict(r) for r in c.execute("SELECT strftime('%Y-%m',created,'+1 hour') month,COUNT(*) payments,SUM(amount) amount_millimes FROM cash_payments GROUP BY month ORDER BY month DESC LIMIT 12")]
+  return jsonify(business=business,events=events,daily=daily,monthly_cash=monthly_cash,period_days=30)
  @app.get('/api/admin/consumers')
  def admin_consumers():
   token=session.get('admin_token')

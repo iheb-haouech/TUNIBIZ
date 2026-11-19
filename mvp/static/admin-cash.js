@@ -5,5 +5,30 @@ async function action(el){const p={id:Number(el.dataset.id),action:el.dataset.ac
 const search=root.querySelector('#shop-search'),filter=root.querySelector('#shop-filter');
 function applyFilter(){let count=0;const q=search.value.trim().toLocaleLowerCase('fr');const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Africa/Tunis',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());for(const el of root.querySelectorAll('.tn-shop')){const shop=d.shops.find(x=>String(x.id)===el.dataset.shop);const status=shop.status==='active'&&shop.paid_until<=today?'expired':shop.status;const match=(!q||[shop.name,shop.city,shop.category,shop.category_detail].join(' ').toLocaleLowerCase('fr').includes(q))&&(filter.value==='all'?status!=='archived':filter.value===status);el.hidden=!match;if(match)count++;}root.querySelector('#shop-count').textContent=count+' commerce(s) affiché(s) · '+d.shops.filter(s=>s.status==='archived').length+' archivé(s)';}
 search.oninput=applyFilter;filter.onchange=applyFilter;applyFilter();
-root.querySelectorAll('form[data-action]').forEach(f=>f.onsubmit=e=>{e.preventDefault();action(f)});root.querySelectorAll('button[data-action]').forEach(b=>b.onclick=()=>action(b));root.querySelector('#logout').onclick=async()=>{await api('/admin/logout',{});login()};await renderAdminOverview(root,api,esc);await renderReleaseAdmin(root,api)}
+root.querySelectorAll('form[data-action]').forEach(f=>f.onsubmit=e=>{e.preventDefault();action(f)});root.querySelectorAll('button[data-action]').forEach(b=>b.onclick=()=>action(b));root.querySelector('#logout').onclick=async()=>{await api('/admin/logout',{});login()};await renderAdminControls(root,api,esc,d);await renderAdminOverview(root,api,esc);await renderReleaseAdmin(root,api)}
 (async()=>{try{csrf=(await api('/session')).csrf;try{await refresh()}catch{login()}}catch(e){login(e.message)}})();
+async function renderAdminControls(root,api,esc,d){
+ const types={grocery_general:'Alimentation générale',drugstore:'Drugstore',grocery:'Épicerie',coffee:'Café',restaurant:'Restaurant',bakery:'Pâtisserie',shopping:'Shopping',clothing:'Vêtements',other:'Autres'};
+ for(const s of d.shops){
+  const card=root.querySelector('[data-shop="'+s.id+'"]');if(!card||s.status==='archived')continue;
+  const category=s.category in types?s.category:'other',detail=category==='other'?(s.category_detail||({drinks:'Boissons',beauty:'Beauté'}[s.category]||'Autres')):'';
+  const panel=document.createElement('details');panel.innerHTML='<summary>Modifier les informations</summary><form class="admin-profile"><label>Nom<input name="name" maxlength="80" required value="'+esc(s.name)+'"></label><label>Ville<input name="city" maxlength="80" required value="'+esc(s.city)+'"></label><label>Catégorie<select name="category">'+Object.entries(types).map(([k,v])=>'<option value="'+k+'"'+(k===category?' selected':'')+'>'+esc(v)+'</option>').join('')+'</select></label><label>Précisez si Autres<input name="category_detail" maxlength="80" value="'+esc(detail)+'"></label><button>Enregistrer les informations</button></form><p role="status"></p>';
+  card.append(panel);
+  panel.querySelector('form').onsubmit=async e=>{
+   e.preventDefault();const b=panel.querySelector('button');if(b.disabled)return;b.disabled=true;
+   try{const p=Object.fromEntries(new FormData(e.target));if(p.category==='other'&&!p.category_detail.trim())throw Error('Précisez le type d’établissement');await api('/admin/shop',{id:s.id,action:'profile',...p});await refresh();root.querySelector('#msg').textContent='Informations enregistrées.'}catch(e){panel.querySelector('[role=status]').textContent=e.message;b.disabled=false}
+  };
+  const mod=document.createElement('details');mod.innerHTML='<summary>Modérer les offres et photos</summary><div class="admin-moderation-content">Ouvrez pour charger.</div>';card.append(mod);
+  mod.ontoggle=async()=>{
+   if(!mod.open||mod.dataset.loaded)return;const box=mod.querySelector('div');box.textContent='Chargement…';
+   try{
+    const result=await api('/admin/moderation?shop_id='+s.id);
+    box.innerHTML=result.offers.map(o=>'<div class="item"><strong>'+esc(o.title)+'</strong><p>'+esc(o.kind)+' · '+esc(o.starts)+' au '+esc(o.ends)+' · '+(o.active?'Active':'Désactivée')+'</p><button class="secondary" data-offer="'+o.id+'" data-kind="'+o.kind+'" data-active="'+(o.active?'0':'1')+'">'+(o.active?'Désactiver':'Réactiver')+'</button></div>').join('')||'<p>Aucune offre.</p>';
+    if(result.photos.length)box.insertAdjacentHTML('beforeend','<h3>Photos</h3>'+result.photos.map(p=>'<div class="item"><img loading="lazy" width="120" height="90" style="object-fit:cover;max-width:100%" alt="Photo du commerce" src="/api/admin/photo/'+esc(p.id)+'"><code>'+esc(p.id)+'</code> · '+(p.hidden?'Masquée':'Autorisée')+' <button class="secondary" data-photo="'+esc(p.id)+'" data-hidden="'+(p.hidden?'0':'1')+'">'+(p.hidden?'Autoriser':'Masquer')+'</button></div>').join(''));
+    async function save(button,body){if(button.disabled)return;button.disabled=true;try{await api('/admin/shop',{id:s.id,...body});await refresh();root.querySelector('#msg').textContent='Modération enregistrée.'}catch(e){root.querySelector('#msg').textContent=e.message;button.disabled=false}}
+    box.querySelectorAll('[data-offer]').forEach(b=>b.onclick=()=>save(b,{action:'moderate_offer',kind:b.dataset.kind,offer_id:Number(b.dataset.offer),active:b.dataset.active==='1'}));
+    box.querySelectorAll('[data-photo]').forEach(b=>b.onclick=()=>save(b,{action:'moderate_photo',photo_id:b.dataset.photo,hidden:b.dataset.hidden==='1'}));mod.dataset.loaded='1';
+   }catch(e){box.textContent=e.message}
+  };
+ }
+}
