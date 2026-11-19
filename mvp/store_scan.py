@@ -2,6 +2,7 @@
 import base64,hashlib,io,re,secrets,time
 from flask import jsonify,session,send_from_directory,send_file,request
 import qrcode
+from verification import welcome_identity
 
 BASE='https://ihebhaouech.pythonanywhere.com'
 def digest(v):return hashlib.sha256(v.encode()).hexdigest()
@@ -27,7 +28,7 @@ def install(app,db,payload,merchant,err):
  def account(c):
   t=session.get('wallet_token')
   if not isinstance(t,str):return None
-  return c.execute('SELECT a.id,a.name FROM consumer_accounts a JOIN wallet_sessions w ON w.account_id=a.id WHERE w.digest=? AND w.expires>?',(digest(t),int(time.time()))).fetchone()
+  return c.execute('SELECT a.id,a.name,a.email FROM consumer_accounts a JOIN wallet_sessions w ON w.account_id=a.id WHERE w.digest=? AND w.expires>?',(digest(t),int(time.time()))).fetchone()
  def shop(c,slug):
   return c.execute("SELECT s.id,s.slug,s.name,s.city FROM shops s JOIN subscriptions t ON t.shop_id=s.id WHERE s.slug=? AND t.status='active' AND t.paid_until>date('now','+1 hour')",(slug,)).fetchone()
  def expire(c):
@@ -76,7 +77,12 @@ def install(app,db,payload,merchant,err):
     c.execute('INSERT INTO store_memberships VALUES(?,?,?,?)',(aid,sid,cid,h))
    c.execute('INSERT OR IGNORE INTO wallet_cards VALUES(?,?,?)',(cid,aid,h))
    if welcome:
-    c.execute("INSERT INTO loyalty_ledger(customer_id,kind,points,label,request_key) VALUES(?,'welcome',3,'Bienvenue','welcome:'+?)",(cid,str(cid)))
+    identity=welcome_identity(a['email'],app.secret_key)
+    c.execute('DELETE FROM welcome_claims WHERE expires<=?',(now,))
+    claimed=c.execute('SELECT 1 FROM welcome_claims WHERE identity_digest=? AND shop_id=?',(identity,sid)).fetchone()
+    if claimed:return jsonify(status='welcome',points=0,shop=s['name'],customer_id=cid,welcome_previously_claimed=True),201
+    c.execute('INSERT INTO welcome_claims VALUES(?,?,?)',(identity,sid,now+90*86400))
+    c.execute("INSERT INTO loyalty_ledger(customer_id,kind,points,label,request_key) VALUES(?,'welcome',3,'Bienvenue','welcome:'||?)",(cid,str(cid)))
     return jsonify(status='welcome',points=3,shop=s['name'],customer_id=cid),201
    pending=c.execute("SELECT id,expires FROM store_scan_requests WHERE account_id=? AND shop_id=? AND state='pending'",(aid,sid)).fetchone()
    if pending:return jsonify(status='pending',id=pending['id'],expires=pending['expires'],shop=s['name'],duplicate=True)

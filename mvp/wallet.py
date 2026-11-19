@@ -82,7 +82,7 @@ def install(app,db,payload,clean,err):
    renewed=c.execute('UPDATE wallet_sessions SET expires=? WHERE digest=? AND expires>? AND expires<?',(now+30*86400,digest(session['wallet_token']),now,now+29*86400)).rowcount
    if renewed:session.permanent=True;session.modified=True
    cards=[dict(r) for r in c.execute("""WITH balances AS (
-     SELECT customer_id,SUM(points) points,COUNT(CASE WHEN kind='purchase' THEN 1 END) purchases
+     SELECT customer_id,SUM(points) points,COUNT(CASE WHEN kind IN ('purchase','scan') THEN 1 END) purchases
      FROM loyalty_ledger GROUP BY customer_id)
      SELECT w.customer_id id,s.id shop_id,s.name shop,s.city,a.name card_name,a.consent,
      EXISTS(SELECT 1 FROM subscriptions t WHERE t.shop_id=s.id AND t.status='archived') archived,

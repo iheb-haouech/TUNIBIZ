@@ -1,9 +1,8 @@
-Flask>=3.1,<4
-Werkzeug>=3.0,<4
-Pillow>=10,<13
-requests>=2.31,<3
-playwright>=1.45,<2
-
+Flask>=3.1.3,<3.2
+Werkzeug>=3.1.9,<3.2
+Pillow>=13.0,<14
+requests>=2.33,<3
+urllib3>=2.8,<3
+certifi>=2026.10.18
 qrcode==8.2
-
 google-auth>=2.40,<3
