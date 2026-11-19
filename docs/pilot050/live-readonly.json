@@ -1,0 +1,61 @@
+[
+  {
+    "path": "/",
+    "status": 200,
+    "nosniff": "nosniff",
+    "frame_options": "DENY",
+    "hsts": true
+  },
+  {
+    "path": "/admin",
+    "status": 200,
+    "nosniff": "nosniff",
+    "frame_options": "DENY",
+    "hsts": true
+  },
+  {
+    "path": "/privacy",
+    "status": 200,
+    "nosniff": "nosniff",
+    "frame_options": "DENY",
+    "hsts": true
+  },
+  {
+    "path": "/download",
+    "status": 200,
+    "nosniff": "nosniff",
+    "frame_options": "DENY",
+    "hsts": true
+  },
+  {
+    "path": "/api/admin/shops",
+    "status": 401,
+    "nosniff": "nosniff",
+    "frame_options": "DENY",
+    "hsts": true
+  },
+  {
+    "path": "/api/google/config",
+    "status": 200,
+    "nosniff": "nosniff",
+    "frame_options": "DENY",
+    "hsts": true,
+    "enabled": false
+  },
+  {
+    "path": "/api/password/config",
+    "status": 200,
+    "nosniff": "nosniff",
+    "frame_options": "DENY",
+    "hsts": true,
+    "enabled": false
+  },
+  {
+    "path": "/api/app/version",
+    "status": 200,
+    "nosniff": "nosniff",
+    "frame_options": "DENY",
+    "hsts": true,
+    "version": null
+  }
+]

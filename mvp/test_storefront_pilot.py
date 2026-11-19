@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  m,n,a,b=[app.test_client() for _ in range(4)]
  for client,slug in ((m,'first'),(n,'second')):post(client,'/login',{'email':slug+'@example.test','password':'Test-merchant-password'})
  for client,email in ((a,'a'),(b,'b')):post(client,'/wallet/register',{'name':'QA '+email,'email':email+'@example.test','password':'Test-consumer-password'},201)
- im=Image.new('RGB',(500,350),'navy');buf=io.BytesIO();im.save(buf,'PNG');image=base64.b64encode(buf.getvalue()).decode()
+ im=Image.open(P/'static'/'media'/'boutique.webp').convert('RGB');im.thumbnail((480,480));buf=io.BytesIO();im.save(buf,'JPEG',quality=75);image=base64.b64encode(buf.getvalue()).decode()
  photo=post(m,'/storefront/photo',{'image':image},201)['id']
  foreign=post(n,'/storefront/photo',{'image':image},201)['id']
  private=post(m,'/storefront/photo',{'image':image},201)['id']
@@ -112,6 +112,8 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
     assert page.locator('.sf-price').filter(has_text='3 points').count()==1
     assert page.evaluate('window.xss') is None
     assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
+    with db() as c:c.execute("UPDATE storefront_profiles SET description='Vitrine de démonstration — compte fictif de recette' WHERE shop_id=?",(ids['first'],))
+    page.reload();page.wait_for_selector('#favorite-detail')
     out=Path('E:/TUNIBIZ-Dev/pilot050-storefront-390.png');page.screenshot(path=str(out),full_page=True)
     merchant=browser.new_context(viewport={'width':390,'height':844})
     merchant.add_cookies([{'name':'session','value':m.get_cookie('session').value,'url':origin}])

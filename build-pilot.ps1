@@ -19,6 +19,8 @@ $env:GRADLE_USER_HOME=Join-Path $DevRoot 'gradle'
 $env:TEMP=Join-Path $DevRoot 'temp';$env:TMP=$env:TEMP
 $env:ANDROID_HOME=Join-Path $env:LOCALAPPDATA 'Android\Sdk'
 $env:ANDROID_USER_HOME=Join-Path $DevRoot 'android-user'
+$ndk=Join-Path $env:ANDROID_HOME 'ndk\28.2.13676358'
+if(!(Test-Path (Join-Path $ndk 'source.properties')) -or !(Test-Path (Join-Path $ndk 'toolchains\llvm\prebuilt\windows-x86_64\bin\clang.exe'))){throw 'Install the complete official Android NDK 28.2.13676358 before compiling this pilot.'}
 $env:JAVA_HOME='C:\Program Files\Microsoft\jdk-21.0.11.10-hotspot'
 [Environment]::SetEnvironmentVariable('ProgramFiles(x86)','C:\Program Files (x86)','Process')
 $flutter=Join-Path $DevRoot 'flutter\bin\flutter.bat'
