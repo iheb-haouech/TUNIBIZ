@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'api.dart';
@@ -42,7 +43,9 @@ class _ConsumerShellState extends State<ConsumerShell> {
     super.dispose();
   }
   Future<void> startup() async {
+    if(SessionVault.available)await UsageAnalytics.restore();
     await load();
+    if(UsageAnalytics.allowed){await UsageAnalytics.screen('home');unawaited(Api.usage('home_view'));}
     if (!mounted || !SessionVault.available || !baseUrl.startsWith('https://')) return;
     try {
       if (await permissions.invokeMethod<bool>('onboardingNeeded') == true && mounted) {
@@ -58,6 +61,10 @@ class _ConsumerShellState extends State<ConsumerShell> {
         await permissions.invokeMethod('onboardingDone');
       }
     } catch (_) { /* Optional permissions never block the wallet. */ }
+    if(mounted&&await SessionVault.read('analytics')==null&&mounted){
+      final choice=await UsageAnalytics.preferences(context);
+      if(choice!=null){await UsageAnalytics.change(choice);if(choice){await UsageAnalytics.screen('home');unawaited(Api.usage('home_view'));}}
+    }
   }
   Future<void> load() async {
     if (loading || !mounted) return;
@@ -90,6 +97,7 @@ class _ConsumerShellState extends State<ConsumerShell> {
   void select(int next) {
     FocusManager.instance.primaryFocus?.unfocus();
     final destination = next == 2 ? 4 : next;
+    if(next!=index){unawaited(UsageAnalytics.screen(const ['home','stores','scanner','nearby','wallet'][next]));unawaited(Api.usage(const ['home_view','stores_open','wallet_open','nearby_open','wallet_open'][next]));}
     if (next == 2) walletController.requestScan();
     setState(() { index = destination; visited.add(destination); });
     if (destination == 0) load();
@@ -140,7 +148,7 @@ class _ConsumerShellState extends State<ConsumerShell> {
         const SizedBox(height: 14),
         OutlinedButton.icon(onPressed: () => select(3), icon: const Icon(Icons.radar), label: const Text('Découvrir les offres Nearby')),
         const SizedBox(height: 14), const UpdateEntry(),
-        TextButton(onPressed: () async { final value = await UsageAnalytics.preferences(context); if (value != null) await UsageAnalytics.change(value); }, child: const Text('Préférences de statistiques')),
+        TextButton(onPressed: () async { final value = await UsageAnalytics.preferences(context); if (value != null) {await UsageAnalytics.change(value);if(value){await UsageAnalytics.screen(const ['home','stores','scanner','nearby','wallet'][index]);unawaited(Api.usage(const ['home_view','stores_open','wallet_open','nearby_open','wallet_open'][index]));}} }, child: const Text('Préférences de statistiques')),
         const Text('Compte consommateur gratuit · Points séparés par commerce.', style: TextStyle(color: muted, fontSize: 12)), const SizedBox(height: 16)
       ])));
   }

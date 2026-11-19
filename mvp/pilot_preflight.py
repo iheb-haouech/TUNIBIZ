@@ -11,7 +11,10 @@ def checks():
  out['email_verification_required']=os.getenv('TUNIBIZ_REQUIRE_EMAIL_VERIFICATION','1')=='1'
  out['email_delivery_configured']=bool(os.getenv('TUNIBIZ_BREVO_KEY') and os.getenv('TUNIBIZ_EMAIL_FROM'))
  out['google_configured']=all(os.getenv(k) for k in ('TUNIBIZ_GOOGLE_CLIENT_ID','TUNIBIZ_GOOGLE_CLIENT_SECRET','TUNIBIZ_GOOGLE_REDIRECT_URI'))
- out['ga4_configured']=bool(os.getenv('TUNIBIZ_GA4_MEASUREMENT_ID'))
+ from analytics import tracking_config
+ tracking=tracking_config()
+ out['ga4_configured']=bool(tracking['measurement_id'])
+ out['gtm_configured']=bool(tracking['gtm_container_id'])
  out['free_disk_at_least_250MiB']=shutil.disk_usage(data if data.exists() else Path.cwd()).free>250*1024*1024
  out['database_exists']=out['absolute_data_dir'] and (data/'tunibiz.sqlite').is_file()
  if out['database_exists']:

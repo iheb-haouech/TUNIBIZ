@@ -1,0 +1,16 @@
+{
+  "events": [
+    "page_view",
+    "tn_wallet_view",
+    "tn_wallet_open"
+  ],
+  "measurement_id": "G-HP8K9C7WD5",
+  "container_id": "GTM-N7B5938K",
+  "requests": 2,
+  "statuses": [
+    204,
+    204
+  ],
+  "sensitive_test_values_absent": true,
+  "scope": "real SDK on isolated local site, debug mode; not GA4 console/production validation"
+}

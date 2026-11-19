@@ -3,6 +3,11 @@ import os,re,time,hashlib
 from flask import request,session,jsonify
 # Never record request bodies, IPs, tokens, coordinates, account IDs or arbitrary paths.
 EVENTS={
+ ('POST','/api/storefront/profile'):'storefront_updated',('POST','/api/storefront/photo'):'store_photo_uploaded',
+ ('POST','/api/storefront/offer'):'store_offer_saved',('POST','/api/storefront/stop'):'store_offer_stopped',
+ ('POST','/api/storefront/coupon/claim'):'coupon_claimed',('POST','/api/storefront/coupon/redeem'):'coupon_redeemed',
+ ('GET','/api/stores'):'stores_catalog',('POST','/api/stores/favorite'):'store_favorite',
+
  ('POST','/api/wallet/store-scan'):'store_scan',('POST','/api/crm/store-scan/decide'):'store_scan_review',
  ('GET','/api/crm'):'business_dashboard',('POST','/api/login'):'merchant_login',('POST','/api/logout'):'merchant_logout',
  ('POST','/api/merchant/register'):'merchant_registration',('POST','/api/crm/customer'):'customer_created',
@@ -18,7 +23,15 @@ EVENTS={
  ('POST','/api/nearby/offer'):'nearby_offer_created',('POST','/api/nearby/stop'):'nearby_offer_stopped',
  ('POST','/api/demo-request'):'demo_request',('GET','/api/business'):'legacy_business',('POST','/api/business/item'):'item_saved',('POST','/api/business/status'):'order_status'
 }
-UI={'home_view','wallet_open','business_open','nearby_open','nearby_discovery','nearby_offer_view','nearby_map_enabled','nearby_alert_enabled','merchant_registration_view','privacy_view','loyalty_open'}
+UI={'solutions_view','download_view','stores_open','storefront_open','app_update_open','home_view','wallet_open','business_open','nearby_open','nearby_discovery','nearby_offer_view','nearby_map_enabled','nearby_alert_enabled','merchant_registration_view','privacy_view','loyalty_open'}
+def tracking_config():
+ enabled=os.getenv('TUNIBIZ_GOOGLE_ANALYTICS_ENABLED','1')=='1'
+ mid=(os.getenv('TUNIBIZ_GA4_MEASUREMENT_ID') or 'G-HP8K9C7WD5') if enabled else ''
+ container=os.getenv('TUNIBIZ_GTM_CONTAINER_ID','GTM-N7B5938K') if enabled else ''
+ mid=mid if re.fullmatch(r'G-[A-Z0-9]+',mid) else ''
+ container=container if re.fullmatch(r'GTM-[A-Z0-9]+',container) else ''
+ return {'measurement_id':mid,'gtm_container_id':container,'consent_mode':'basic','transport':'gtm' if mid and container else 'gtag' if mid else 'local'}
+
 def install(app,db,payload,err):
  with db() as c:
   c.execute("""CREATE TABLE IF NOT EXISTS analytics_daily(day TEXT NOT NULL,platform TEXT NOT NULL,event TEXT NOT NULL,n INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(day,platform,event))""")
@@ -27,9 +40,7 @@ def install(app,db,payload,err):
    c.execute("INSERT INTO analytics_daily VALUES(date('now','+1 hour'),?,?,1) ON CONFLICT(day,platform,event) DO UPDATE SET n=n+1",(platform,event))
    c.execute("DELETE FROM analytics_daily WHERE day<date('now','-365 days')")
  @app.get('/api/analytics/config')
- def analytics_config():
-  mid=os.getenv('TUNIBIZ_GA4_MEASUREMENT_ID','')
-  return jsonify(measurement_id=mid if re.fullmatch(r'G-[A-Z0-9]+',mid) else '')
+ def analytics_config():return jsonify(**tracking_config())
  @app.post('/api/analytics/event')
  def analytics_event():
   p=payload();platform=request.headers.get('X-Tunibiz-Platform')
@@ -39,7 +50,10 @@ def install(app,db,payload,err):
  @app.after_request
  def analytics_record(response):
   platform=request.headers.get('X-Tunibiz-Platform');event=EVENTS.get((request.method,request.path))
+  if request.method=='GET' and request.endpoint=='sf_store':event='storefront_view'
   if response.status_code<300 and response.status_code>=200 and event and platform in ('web','android') and request.headers.get('X-Tunibiz-Analytics')=='yes':
+   body=response.get_json(silent=True)
+   if isinstance(body,dict) and body.get('duplicate') is True:return response
    try:
     increment(platform,event);response.headers['X-Tunibiz-Event']=event
    except Exception:app.logger.warning('Analytics aggregate unavailable')

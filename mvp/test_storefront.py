@@ -54,8 +54,14 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  coupon=post(m,'/storefront/offer',{**base,'kind':'coupon','title':'Coupon QA','discount':15},201)['id']
  view=get(a,'/api/stores/'+str(ids['first'])).json
  assert {x['id'] for x in view['offers']}=={pack,coupon} and view['cover']==photo
- code=post(a,'/storefront/coupon/claim',{'id':coupon},201)['code']
- assert post(a,'/storefront/coupon/claim',{'id':coupon})['code']==code
+ ah={'X-CSRF-Token':get(a,'/api/session').json['csrf'],'X-Tunibiz-Analytics':'yes','X-Tunibiz-Platform':'web'}
+ first=a.post('/api/storefront/coupon/claim',json={'id':coupon},headers=ah,base_url='https://localhost')
+ assert first.status_code==201 and first.headers['X-Tunibiz-Event']=='coupon_claimed'
+ code=first.json['code']
+ again=a.post('/api/storefront/coupon/claim',json={'id':coupon},headers=ah,base_url='https://localhost')
+ assert again.status_code==200 and again.json['code']==code and again.json['duplicate'] is True
+ assert 'X-Tunibiz-Event' not in again.headers
+ with db() as c:assert c.execute("SELECT SUM(n) FROM analytics_daily WHERE platform='web' AND event='coupon_claimed'").fetchone()[0]==1
  assert post(b,'/storefront/coupon/claim',{'id':coupon},201)['code']!=code
  assert get(b,'/api/stores/'+str(ids['first'])).json['coupons'][0]['code']!=code
  post(n,'/storefront/coupon/redeem',{'code':code},404)

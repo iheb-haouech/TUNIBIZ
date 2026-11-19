@@ -35,6 +35,16 @@ Copy-Item "$src\assets\*" "$work\assets" -Force
 Copy-Item "$src\pubspec.yaml","$src\pubspec.lock" $work -Force
 Copy-Item "$src\android\app\src\*" "$work\android\app\src" -Recurse -Force
 Copy-Item "$src\android\app\build.gradle.kts" "$work\android\app\build.gradle.kts" -Force
+Copy-Item "$src\android\settings.gradle.kts" "$work\android\settings.gradle.kts" -Force
+$firebaseFile=Join-Path $DevRoot 'firebase-google-services.json'
+if(!(Test-Path $firebaseFile)){throw 'The existing Firebase Android configuration is required.'}
+$firebase=Get-Content $firebaseFile -Raw | ConvertFrom-Json
+$firebaseClient=$firebase.client | Where-Object {$_.client_info.android_client_info.package_name -eq 'tn.tunibiz.tunibiz_mobile'} | Select-Object -First 1
+if($firebase.project_info.project_id -ne 'tunibiz-782f0' -or !$firebaseClient){throw 'Firebase project/package mismatch'}
+Copy-Item $firebaseFile "$work\android\app\google-services.json" -Force
+$definesFile=Join-Path $DevRoot 'firebase-pilot-defines.json'
+$firebaseDefines=@{FIREBASE_APP_ID=$firebaseClient.client_info.mobilesdk_app_id;FIREBASE_API_KEY=$firebaseClient.api_key[0].current_key;FIREBASE_PROJECT_ID=$firebase.project_info.project_id;FIREBASE_SENDER_ID=$firebase.project_info.project_number;FIREBASE_STORAGE_BUCKET=$firebase.project_info.storage_bucket}
+[IO.File]::WriteAllText($definesFile,($firebaseDefines | ConvertTo-Json),(New-Object Text.UTF8Encoding($false)))
 Set-Location $work
 Invoke-Native $flutter @('pub','get','--offline')
 if($LASTEXITCODE -ne 0){throw 'Dependency setup failed'}
@@ -46,7 +56,7 @@ try{
  $env:TUNIBIZ_SIGN_KEY_PASSWORD=$env:TUNIBIZ_SIGN_PASSWORD
  $env:TUNIBIZ_SIGN_STORE=$store
  $env:TUNIBIZ_SIGN_ALIAS='tunibiz'
- Invoke-Native $flutter @('build','apk','--release','--no-pub','--target-platform','android-arm64','--dart-define=API_BASE=https://ihebhaouech.pythonanywhere.com')
+ Invoke-Native $flutter @('build','apk','--release','--no-pub','--target-platform','android-arm64','--dart-define=API_BASE=https://ihebhaouech.pythonanywhere.com',('--dart-define-from-file='+$definesFile))
  if($LASTEXITCODE -ne 0){throw 'Native release compilation failed'}
  $apk=Join-Path $work 'build\app\outputs\flutter-apk\app-release.apk'
  $bt=Get-ChildItem "$env:ANDROID_HOME\build-tools" -Directory | Where-Object {Test-Path ($_.FullName+'\apksigner.bat')} | Sort-Object Name -Descending | Select-Object -First 1

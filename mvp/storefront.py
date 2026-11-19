@@ -187,7 +187,7 @@ def install(app,db,payload,clean,merchant,err):
    o=c.execute("SELECT o.id FROM storefront_offers o JOIN subscriptions t ON t.shop_id=o.shop_id WHERE o.id=? AND o.kind='coupon' AND o.active=1 AND o.starts<="+TODAY+" AND o.ends>="+TODAY+" AND "+ACTIVE,(ident,)).fetchone()
    if not o:return err('Coupon indisponible',404)
    r=c.execute('SELECT code,used FROM storefront_coupons WHERE offer_id=? AND account_id=?',(ident,a[0])).fetchone()
-   if r:return jsonify(dict(r))
+   if r:return jsonify(**dict(r),duplicate=True)
    code='TN-'+secrets.token_hex(6).upper();c.execute('INSERT INTO storefront_coupons(code,offer_id,account_id) VALUES(?,?,?)',(code,ident,a[0]))
   return jsonify(code=code,used=None),201
  @app.post('/api/storefront/coupon/redeem')
