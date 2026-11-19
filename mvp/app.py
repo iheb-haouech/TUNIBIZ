@@ -86,7 +86,7 @@ def unauth(e):return err('Connexion requise',401)
 def missing(e):return err('Introuvable',404)
 @app.before_request
 def csrf():
- if request.path=='/api/storefront/photo':
+ if request.path in ('/api/storefront/photo','/api/commerce/sponsor/photo'):
   request.max_content_length=400000
 
  if request.method=='POST' and (not session.get('csrf') or not secrets.compare_digest(request.headers.get('X-CSRF-Token',''),session['csrf'])):return err('Session invalide, rechargez la page',403)
@@ -238,6 +238,8 @@ from pilot_security import install as install_pilot_security
 install_pilot_security(app,db,err,throttle)
 from push_notifications import install as install_push_notifications
 install_push_notifications(app,db,payload,err,throttle)
+from commerce import install as install_commerce
+install_commerce(app,db,payload,clean,merchant,err,throttle)
 if __name__=='__main__':
  if PRODUCTION:raise RuntimeError('Use a production WSGI server, not Flask development server')
  print('TUNIBIZ local preview: http://127.0.0.1:8877',flush=True)

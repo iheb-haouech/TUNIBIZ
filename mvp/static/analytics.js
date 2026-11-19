@@ -3,7 +3,7 @@
  const original=window.fetch.bind(window);
  let consent=false,mid='',container='',loaded=false,pageSent=false,configReady=false;
  try{consent=localStorage.getItem('tn_analytics')==='yes'}catch{}
- const pages={'/':'home_view','/solutions':'solutions_view','/download':'download_view','/stores':'stores_open','/storefront':'storefront_open','/wallet':'wallet_open','/crm':'business_open','/business':'business_open','/nearby':'nearby_open','/nearby/business':'business_open','/loyalty':'loyalty_open','/merchant-register':'merchant_registration_view','/privacy':'privacy_view'};
+ const pages={'/client':'home_view','/business/v052':'business_open','/':'home_view','/solutions':'solutions_view','/download':'download_view','/stores':'stores_open','/storefront':'storefront_open','/wallet':'wallet_open','/crm':'business_open','/business':'business_open','/nearby':'nearby_open','/nearby/business':'business_open','/loyalty':'loyalty_open','/merchant-register':'merchant_registration_view','/privacy':'privacy_view'};
  const uiEvents=new Set([...Object.values(pages),'nearby_discovery','nearby_offer_view','nearby_map_enabled','nearby_alert_enabled','app_update_open']);
  const protectedPage=!Object.hasOwn(pages,location.pathname);
  const safeUrl=()=>location.origin+location.pathname; // No query, fragment, referrer or user fields.

@@ -26,6 +26,8 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  m,n,a,b=app.test_client(),app.test_client(),app.test_client(),app.test_client()
  for client,slug in ((m,'first'),(n,'second')):post(client,'/login',{'email':slug+'@example.test','password':'Test-merchant-password'})
  for client,email in ((a,'a'),(b,'b')):post(client,'/wallet/register',{'name':'QA '+email,'email':email+'@example.test','password':'Test-consumer-password'},201)
+ from qa_support import publish_fixture
+ for s in ('first','second'):publish_fixture(db,ids[s])
  assert {r['id'] for r in get(a,'/api/stores').json['stores']}=={ids['first'],ids['second']}
  get(a,'/api/stores/'+str(ids['blocked']),404)
  post(a,'/wallet/store-scan',{'slug':'first'},201)

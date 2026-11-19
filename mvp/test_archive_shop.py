@@ -17,6 +17,8 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
   c.execute("INSERT INTO subscriptions(shop_id,status,paid_until) VALUES(?,'active','2099-01-01')",(sid,))
   c.execute("INSERT INTO nearby_locations(shop_id,lat,lon,address,location_confirmed) VALUES(?,33.88,10.86,'QA',1)",(sid,))
   c.execute("INSERT INTO cash_payments(shop_id,reference,amount) VALUES(?,'qa-original',19000)",(sid,))
+ from qa_support import publish_fixture
+ publish_fixture(db,sid)
  a,m,u=app.test_client(),app.test_client(),app.test_client()
  def get(c,path,status=200):
   r=c.get(path,base_url='https://localhost');assert r.status_code==status,(path,r.status_code,r.json);return r

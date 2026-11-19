@@ -16,8 +16,8 @@ class ConsumerWalletController extends ChangeNotifier{
 }
 Future<void>? googleInitialization;
 class ConsumerWallet extends StatefulWidget{
- final CardBuilder cardBuilder;final Api? apiOverride;final bool scanOnOpen,active;final ConsumerWalletController? controller;final Future<String?> Function(BuildContext)? scannerOverride;
- const ConsumerWallet({super.key,required this.cardBuilder,this.apiOverride,this.scanOnOpen=false,this.scannerOverride,this.controller,this.active=true});
+ final Future<void> Function()? onSessionChanged;final bool profileOnly;final CardBuilder cardBuilder;final Api? apiOverride;final bool scanOnOpen,active;final ConsumerWalletController? controller;final Future<String?> Function(BuildContext)? scannerOverride;
+ const ConsumerWallet({super.key,required this.cardBuilder,this.onSessionChanged,this.profileOnly=false,this.apiOverride,this.scanOnOpen=false,this.scannerOverride,this.controller,this.active=true});
  @override State<ConsumerWallet> createState()=>_ConsumerWalletState();
 }
 class _ConsumerWalletState extends State<ConsumerWallet>{
@@ -50,7 +50,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  });
  Future<void> signIn()async{
  if(!email.text.contains('@')||password.text.isEmpty||(registering&&(name.text.trim().isEmpty||password.text.length<12))){setState(()=>message='Vérifiez vos informations. Nouveau compte : 12 caractères minimum.');return;}
- await run(()async{await api.init();await api.call(registering?'/wallet/register':'/wallet/login',{'name':name.text.trim(),'email':email.text.trim(),'password':password.text});password.clear();await refresh();});
+ await run(()async{await api.init();await api.call(registering?'/wallet/register':'/wallet/login',{'name':name.text.trim(),'email':email.text.trim(),'password':password.text});password.clear();await refresh();await widget.onSessionChanged?.call();});
  }
  Future<void> signInGoogle()async=>run(()async{
  if(!baseUrl.startsWith('https://'))throw Exception('Connexion Google disponible avec le serveur HTTPS configure.');
@@ -60,7 +60,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  await (googleInitialization??=google.initialize(serverClientId:cfg['client_id'] as String));
  final user=await google.authenticate();final token=user.authentication.idToken;
  if(token==null)throw Exception('Jeton Google indisponible');
- await api.call('/google/login',{'id_token':token});await refresh();
+ await api.call('/google/login',{'id_token':token});await refresh();await widget.onSessionChanged?.call();
  });
  Future<void> scanMerchant()async{
  if(scanning||busy||data==null)return;scanning=true;
@@ -106,12 +106,12 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Retirer cette carte ?'),content:const Text('Les points restent chez le commerçant. Vous pourrez rattacher la carte avec son code personnel valide.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Retirer'))]));
  if(ok==true&&mounted)await run(()async{await api.call('/wallet/unlink',{'id':id});await refresh();});
  }
- Future<void> logout()async=>run(()async{await api.call('/wallet/logout',{});await PushPreferences.clearConsent(api);seen.clear();if(mounted)setState(()=>data=null);});
+ Future<void> logout()async=>run(()async{await api.call('/wallet/logout',{});await PushPreferences.clearConsent(api);seen.clear();if(mounted)setState(()=>data=null);await widget.onSessionChanged?.call();});
  Future<void> deleteAccount()async{
  final google=data?['profile']?['google_linked']==true;
  final pw=await showDialog<String>(context:context,builder:(ctx){String value='';return AlertDialog(title:const Text('Supprimer mon compte'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[const Text('Action irreversible : profil, sessions et cartes rattachees seront supprimes ou anonymises. Les transactions sans nom ou telephone restent dans les registres des commerces. Les points rattaches ne seront plus accessibles.'),const SizedBox(height:12),if(google)const Text('Une connexion Google recente est requise (5 minutes).')else TextField(obscureText:true,onChanged:(v)=>value=v,decoration:const InputDecoration(labelText:'Confirmer le mot de passe'))])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,value),child:const Text('Supprimer definitivement'))]);});
  if(!mounted||pw==null||(!google&&pw.isEmpty))return;
- await run(()async{await api.call('/wallet/delete',{'password':pw,'confirm_google':google});await PushPreferences.clearConsent(api);if(mounted)setState((){data=null;message='Compte supprime.';});});
+ await run(()async{await api.call('/wallet/delete',{'password':pw,'confirm_google':google});await PushPreferences.clearConsent(api);if(mounted)setState((){data=null;message='Compte supprime.';});await widget.onSessionChanged?.call();});
  }
  Widget login()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
  Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(gradient:const LinearGradient(colors:[ink,Color(0xFF174158)]),borderRadius:BorderRadius.circular(23)),child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(Icons.account_balance_wallet_outlined,color:mint,size:40),SizedBox(height:18),Text('Toutes vos cartes. Un seul compte.',style:TextStyle(fontSize:31,fontWeight:FontWeight.w800,color:Colors.white)),SizedBox(height:10),Text('Gardez les points de chaque commerce, gratuitement.',style:TextStyle(color:Colors.white70))])),
@@ -120,11 +120,12 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  TextField(controller:email,keyboardType:TextInputType.emailAddress,autocorrect:false,decoration:const InputDecoration(labelText:'Email')),const SizedBox(height:10),
  TextField(controller:password,obscureText:true,decoration:InputDecoration(labelText:'Mot de passe',helperText:registering?'12 caractères minimum':null)),const SizedBox(height:15),
  FilledButton(onPressed:busy?null:signIn,child:Text(registering?'Créer mon portefeuille':'Se connecter')),
- OutlinedButton.icon(onPressed:busy?null:signInGoogle,icon:const Icon(Icons.account_circle_outlined),label:const Text('Continuer avec Google')),
+ OutlinedButton.icon(onPressed:busy?null:signInGoogle,icon:Image.asset('assets/google_g.png',height:20,width:20),label:const Text('Continuer avec Google')),
  TextButton(onPressed:busy?null:()=>setState((){registering=!registering;message='';password.clear();}),child:Text(registering?'J’ai déjà un compte':'Créer un compte gratuit')),
  if(!registering)TextButton(onPressed:busy?null:()=>recoverPassword(context,'consumer',email.text),child:const Text('Mot de passe oublié ?'))
  ]);
  Widget wallet(Map<String,dynamic> d){
+ if(widget.profileOnly)return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[if(message.isNotEmpty)Text(message),if(verification!=null&&verification!['verified']!=true)OutlinedButton.icon(onPressed:busy?null:verifyEmail,icon:const Icon(Icons.mark_email_read_outlined),label:const Text('Vérifier mon email')),if(PushPreferences.supported(api))PushPreferences(api:api),if(d['profile']['google_linked']==true)TextButton(onPressed:busy?null:signInGoogle,child:const Text('Reconnexion Google')),TextButton(onPressed:busy?null:logout,child:const Text('Déconnexion')),TextButton(onPressed:busy?null:deleteAccount,child:const Text('Supprimer mon compte',style:TextStyle(color:Colors.red)))]);
  final profile=d['profile'] as Map,cards=d['cards'] as List;
  final available=cards.fold<int>(0,(total,c)=>total+(c['eligible'] as num).toInt());
  return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
@@ -147,7 +148,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  ]);
  }
  Widget stat(String value,String label)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(value,style:const TextStyle(color:mint,fontSize:30,fontWeight:FontWeight.w800)),Text(label,style:const TextStyle(color:Colors.white70,fontSize:12))]);
- @override Widget build(BuildContext context)=>Scaffold(backgroundColor:paper,appBar:AppBar(title:const Text('Mon portefeuille'),actions:data==null?[]:[IconButton(tooltip:'Actualiser',onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),IconButton(tooltip:'Déconnexion',onPressed:busy?null:logout,icon:const Icon(Icons.logout))]),body:ListView(padding:const EdgeInsets.all(18),children:[if(busy)const LinearProgressIndicator(),if(message.isNotEmpty)Padding(padding:const EdgeInsets.all(8),child:Text(message,style:const TextStyle(color:Colors.red))),restoring?const Padding(padding:EdgeInsets.all(32),child:Center(child:CircularProgressIndicator())):data==null?(api.signedIn?Column(children:[const Text('Votre compte est enregistré. Connexion au serveur indisponible.'),FilledButton(onPressed:busy?null:()=>run(()async{await api.init();await refresh();}),child:const Text('Réessayer'))]):login()):wallet(data!)]));
+ @override Widget build(BuildContext context)=>widget.profileOnly?(data==null?const SizedBox():wallet(data!)):Scaffold(backgroundColor:paper,appBar:AppBar(title:const Text('Mon portefeuille'),actions:data==null?[]:[IconButton(tooltip:'Actualiser',onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),IconButton(tooltip:'Déconnexion',onPressed:busy?null:logout,icon:const Icon(Icons.logout))]),body:ListView(padding:const EdgeInsets.all(18),children:[if(busy)const LinearProgressIndicator(),if(message.isNotEmpty)Padding(padding:const EdgeInsets.all(8),child:Text(message,style:const TextStyle(color:Colors.red))),restoring?const Padding(padding:EdgeInsets.all(32),child:Center(child:CircularProgressIndicator())):data==null?(api.signedIn?Column(children:[const Text('Votre compte est enregistré. Connexion au serveur indisponible.'),FilledButton(onPressed:busy?null:()=>run(()async{await api.init();await refresh();}),child:const Text('Réessayer'))]):login()):wallet(data!)]));
 }
 class WalletCard extends StatelessWidget{
  final Map<String,dynamic> card;final VoidCallback? onOpen,onRemove,onStore;

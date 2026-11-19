@@ -54,6 +54,8 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  assert {'login','profile','cash'}<={r['action'] for r in history['operations']}
  get(a,'/admin/history?offset=-1',400)
  post(m,'/login',{'email':'first@example.test','password':'QA-merchant-passphrase'})
+ from qa_support import publish_fixture
+ publish_fixture(db,sid)
  day=datetime.now(timezone(timedelta(hours=1))).date().isoformat()
  offer=post(m,'/nearby/offer',{'title':'QA nearby','description':'Conditions QA','starts':day,'ends':day,'category':'coffee'},201)['id']
  mod={'id':sid,'action':'moderate_offer','kind':'nearby','offer_id':offer,'active':False}
@@ -71,7 +73,7 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  post(a,'/admin/shop',hidden)
  assert any('photo_id' in x['details'] for x in get(a,'/admin/history').json['operations'] if x['action']=='moderate_photo')
  photos=get(a,'/admin/moderation?shop_id='+str(sid)).json['photos']
- assert photos[0]['id']==photo and photos[0]['hidden']==1
+ assert next(p for p in photos if p['id']==photo)['hidden']==1
  post(a,'/admin/shop',{**hidden,'hidden':False})
  assert get(a,'/admin/moderation?shop_id='+str(sid)).json['photos'][0]['hidden']==0
  # The journal write is in the mutation transaction: an audit failure must roll back.

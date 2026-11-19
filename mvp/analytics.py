@@ -3,6 +3,10 @@ import os,re,time,hashlib
 from flask import request,session,jsonify
 # Never record request bodies, IPs, tokens, coordinates, account IDs or arbitrary paths.
 EVENTS={
+ ('POST','/api/commerce/points'):'loyalty_points',('POST','/api/commerce/promotion'):'promotion_saved',
+ ('POST','/api/commerce/storefront'):'storefront_updated',('POST','/api/commerce/reward'):'reward_created',
+ ('POST','/api/commerce/join'):'card_linked',('POST','/api/commerce/nearby'):'nearby_visibility',
+ ('POST','/api/commerce/code/use'):'promotion_code_used',('GET','/api/commerce/business'):'business_dashboard',
  ('POST','/api/storefront/profile'):'storefront_updated',('POST','/api/storefront/photo'):'store_photo_uploaded',
  ('POST','/api/storefront/offer'):'store_offer_saved',('POST','/api/storefront/stop'):'store_offer_stopped',
  ('POST','/api/storefront/coupon/claim'):'coupon_claimed',('POST','/api/storefront/coupon/redeem'):'coupon_redeemed',

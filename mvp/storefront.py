@@ -92,6 +92,7 @@ def install(app,db,payload,clean,merchant,err):
    with Image.open(io.BytesIO(data)) as im:
     if im.format not in ('JPEG','PNG','WEBP') or im.width*im.height>16000000:raise ValueError()
     im=ImageOps.exif_transpose(im).convert('RGB');im.thumbnail((1000,1000))
+    if p.get('crop') is True:im=ImageOps.fit(im,(min(im.size),min(im.size)))
     b=io.BytesIO();im.save(b,'JPEG',quality=82,optimize=True)
     if b.tell()>180000:
      im.thumbnail((720,720));b=io.BytesIO();im.save(b,'JPEG',quality=72,optimize=True)

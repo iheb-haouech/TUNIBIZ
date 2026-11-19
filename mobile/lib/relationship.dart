@@ -1,7 +1,8 @@
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/services.dart';
-import 'consumer_shell.dart';
+import 'commerce_client.dart';
+import 'commerce_business.dart';
 import 'package:flutter/material.dart';
 import 'api.dart';
 import 'password_recovery.dart';
@@ -28,9 +29,9 @@ class Tunibiz extends StatelessWidget{
 }
 class Home extends StatelessWidget{
  const Home({super.key});
- @override Widget build(BuildContext context)=>ConsumerShell(
+ @override Widget build(BuildContext context)=>CommerceClient(
  cardBuilder:(api,data)=>Workspace(merchant:false,sharedApi:api,initialData:data),
- businessBuilder:()=>const Workspace(merchant:true));
+ businessBuilder:()=>const CommerceBusiness());
 }
 class Workspace extends StatefulWidget{final bool merchant;final Api? sharedApi;final Map<String,dynamic>? initialData;const Workspace({super.key,required this.merchant,this.sharedApi,this.initialData});@override State<Workspace> createState()=>_WorkspaceState();}
 class _WorkspaceState extends State<Workspace>{

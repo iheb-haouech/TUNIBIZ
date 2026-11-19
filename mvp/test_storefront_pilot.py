@@ -33,6 +33,9 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  private=post(m,'/storefront/photo',{'image':image},201)['id']
  get(a,'/media/store/'+photo,404)
  post(m,'/storefront/profile',{'description':'Une vraie vitrine','cover':None,'hours':'Lundi–samedi : 09:00–20:00','gallery':[photo]})
+ from qa_support import publish_fixture
+ publish_fixture(db,ids['first'],photo)
+ publish_fixture(db,ids['second'],foreign)
  d=get(a,'/api/stores/'+str(ids['first'])).json
  assert d['hours'].startswith('Lundi') and d['gallery']==[photo] and d['address']=='Rue QA, Djerba' and d['lat']==33.88
  assert d['points']==0 and get(a,'/media/store/'+photo).mimetype=='image/jpeg'
@@ -71,11 +74,14 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  post(m,'/storefront/stop',{'id':pack})
  post(m,'/storefront/offer',{**base,'id':pack},409)
  with db() as c:c.execute('INSERT INTO storefront_hidden_photos VALUES(?,?)',(photo,ids['first']))
+ # Moderating a secondary image hides it, while the published primary remains valid.
+ with db() as c:c.execute('UPDATE storefront_profiles SET photo=? WHERE shop_id=?',(private,ids['first']))
  assert get(a,'/api/stores/'+str(ids['first'])).json['gallery']==[]
  get(a,'/media/store/'+photo,404)
  assert get(a,'/api/stores/'+str(ids['first'])).json['offers'][0]['photo'] is None
  with db() as c:c.execute('DELETE FROM storefront_hidden_photos')
  post(m,'/storefront/profile',{'description':'Final','cover':None,'gallery':[]})
+ post(m,'/commerce/storefront',{'photo':photo})
  post(m,'/storefront/photo/delete',{'id':private})
  with db() as c:c.execute("UPDATE subscriptions SET status='blocked' WHERE shop_id=?",(ids['first'],))
  post(a,'/stores/favorite',{'id':ids['first'],'favorite':True},404)

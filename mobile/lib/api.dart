@@ -38,8 +38,8 @@ class Api {
     if (scope != null) await SessionVault.write(scope!, null);
   }
   bool _expired(String path, int status) => status == 401 &&
-      ((scope == 'wallet' && ['/wallet', '/wallet/store-scan', '/wallet/store-scans'].contains(path)) ||
-       (scope == 'merchant' && path == '/crm') ||
+      ((scope == 'wallet' && (['/wallet', '/wallet/store-scan', '/wallet/store-scans'].contains(path) || path == '/commerce/profile')) ||
+       (scope == 'merchant' && (path == '/crm' || path.startsWith('/commerce/')))  ||
        (scope == 'legacy' && path == '/loyalty'));
   Future<String> _body(HttpClientResponse response) async {
     if (response.contentLength > maxResponseBytes) {

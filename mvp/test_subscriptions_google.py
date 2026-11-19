@@ -29,6 +29,8 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  assert post(a,'/admin/shop',{'id':sid,'action':'cash','reference':'QA1'})['duplicate']
  post(m,'/login',credentials)
  assert m[0].get('/api/crm').status_code==200
+ from qa_support import publish_fixture
+ publish_fixture(db,sid)
  day=datetime.date.today().isoformat()
  offer=post(m,'/nearby/offer',{'title':'QA coffee','description':'QA conditions','starts':day,'ends':day,'category':'coffee','radius':9000},201)['id']
  post(a,'/admin/shop',{'id':sid,'action':'radius','radius':2000})

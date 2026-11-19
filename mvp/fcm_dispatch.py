@@ -46,6 +46,36 @@ def deliver(db, send, limit=20):
                 result['retry']+=1
     return result
 
+def deliver_commerce(db, send, limit=20):
+    """Delivery of points, benefits and coupons; authentication checked at send time."""
+    result={'sent':0,'retry':0,'discarded':0}
+    for _ in range(min(max(limit,1),50)):
+        now=int(time.time())
+        with db() as c:
+            c.execute('BEGIN IMMEDIATE')
+            c.execute('DELETE FROM commerce_push_outbox WHERE created<=?',(now-86400,))
+            row=c.execute('''SELECT o.id,o.notification_id,d.token,n.kind,n.account_id,
+                COALESCE(p.marketing,0) marketing FROM commerce_push_outbox o
+                JOIN push_devices d ON d.device_id=o.device_id JOIN wallet_sessions s ON s.digest=d.session_digest
+                JOIN commerce_notifications n ON n.id=o.notification_id AND n.account_id=s.account_id
+                LEFT JOIN commerce_preferences p ON p.account_id=n.account_id
+                WHERE s.expires>? AND o.next_attempt<=? AND o.attempts<5 ORDER BY o.id LIMIT 1''',(now,now)).fetchone()
+            if not row:break
+            row=dict(row)
+            if row['kind']=='marketing' and not row['marketing']:
+                c.execute('DELETE FROM commerce_push_outbox WHERE id=?',(row['id'],));result['discarded']+=1
+                continue
+            c.execute('UPDATE commerce_push_outbox SET attempts=attempts+1,next_attempt=? WHERE id=?',(now+120,row['id']))
+        try:status=send(message(row['token'],'notice-'+str(row['notification_id'])))
+        except Exception:status='retry'
+        with db() as c:
+            if status=='sent':
+                c.execute('DELETE FROM commerce_push_outbox WHERE id=?',(row['id'],));result['sent']+=1
+            elif status=='unregistered':
+                c.execute('DELETE FROM push_devices WHERE token=?',(row['token'],));result['discarded']+=1
+            else:result['retry']+=1
+    return result
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--send',action='store_true',help='Actually transmit pending notifications')
@@ -64,7 +94,7 @@ def main():
             if any(x.get('errorCode')=='UNREGISTERED' for x in details):return 'unregistered'
         return 'retry'
     try:
-        print(deliver(db,send))
+        print({'scans':deliver(db,send),'commerce':deliver_commerce(db,send)})
     finally:
         client.close()
 

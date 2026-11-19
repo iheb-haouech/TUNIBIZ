@@ -28,6 +28,8 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  assert d['dashboard']['shop']['category']=='restaurant'
  assert {x['id']:x['visual'] for x in d['campaigns']}=={cid:'restaurant',old:'general'}
  post('/nearby/location',{'lat':33.88,'lon':10.86,'address':'QA'})
+ from qa_support import publish_fixture
+ publish_fixture(db,sid)
  oid=post('/nearby/offer',{**campaign,'category':'coffee'},201)['id']
  assert get('/nearby/business').json['offers'][0]['category']=='coffee'
  assert get('/nearby').json['offers'][0]['category']=='coffee'

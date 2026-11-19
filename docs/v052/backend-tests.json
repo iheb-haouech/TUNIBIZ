@@ -1,0 +1,115 @@
+{
+  "tests": [
+    {
+      "test": "test_admin_pilot.py",
+      "passed": true,
+      "seconds": 1.21,
+      "output": "PASS admin roles, validated editing, unique cash receipts, real monthly/status totals, durable atomic journal, scoped offer/photo moderation and logout\n"
+    },
+    {
+      "test": "test_analytics.py",
+      "passed": true,
+      "seconds": 1.02,
+      "output": "PASS anonymous opt-in aggregates, rejection of unsolicited data, central business records independent of consent, admin access and pagination\n"
+    },
+    {
+      "test": "test_app_release.py",
+      "passed": true,
+      "seconds": 0.58,
+      "output": "PASS version authorization, verified flag, URL, SHA256, increasing code and consistent SQLite snapshot\n"
+    },
+    {
+      "test": "test_archive_shop.py",
+      "passed": true,
+      "seconds": 0.93,
+      "output": "PASS admin-only archive, explicit confirmation, revocation, preserved cash and points, no accidental reactivation, blocked restoration\n"
+    },
+    {
+      "test": "test_business_visuals.py",
+      "passed": true,
+      "seconds": 0.69,
+      "output": "PASS persistent campaign visual, existing default, validated artwork selection, real merchant category, Nearby photo category and stop\n"
+    },
+    {
+      "test": "test_commerce.py",
+      "passed": true,
+      "seconds": 1.54,
+      "output": "PASS publication requires primary photo and contact; foreign photo rejected\nPASS server-side merchant/admin role separation\nPASS phone normalization, duplicates and tenant-scoped search\nPASS points without price, idempotency, cross-shop rejection and no negative balance\nPASS phone stays unverified; verified email, explicit consent and shop-bound invitation required\nPASS attributed points generate authenticated in-app notification\nPASS price-free public promotion, audience filtering and sponsor escalation rejected\nPASS Nearby references one promotion, respects radius and rejects private audience\nPASS admin-only sponsored home carousel\nPASS coupon has one use and cannot be redeemed by another commerce\nPASS last available coupon is protected against simultaneous claims\nPASS personal promotion codes produce single-use coupons and resist replay/cross-shop/ID guessing\nPASS recorded nonfinancial KPIs, SQLite integrity and foreign keys\nPASS all spaces serve their coherent shell\nPASS account deletion removes normalized phone, contact preferences and queued push\n{\"passed\": 15, \"checks\": [\"publication requires primary photo and contact; foreign photo rejected\", \"server-side merchant/admin role separation\", \"phone normalization, duplicates and tenant-scoped search\", \"points without price, idempotency, cross-shop rejection and no negative balance\", \"phone stays unverified; verified email, explicit consent and shop-bound invitation required\", \"attributed points generate authenticated in-app notification\", \"price-free public promotion, audience filtering and sponsor escalation rejected\", \"Nearby references one promotion, respects radius and rejects private audience\", \"admin-only sponsored home carousel\", \"coupon has one use and cannot be redeemed by another commerce\", \"last available coupon is protected against simultaneous claims\", \"personal promotion codes produce single-use coupons and resist replay/cross-shop/ID guessing\", \"recorded nonfinancial KPIs, SQLite integrity and foreign keys\", \"all spaces serve their coherent shell\", \"account deletion removes normalized phone, contact preferences and queued push\"]}\n"
+    },
+    {
+      "test": "test_gmail_delivery.py",
+      "passed": true,
+      "seconds": 0.29,
+      "output": ".\n----------------------------------------------------------------------\nRan 1 test in 0.018s\n\nOK\n"
+    },
+    {
+      "test": "test_loyalty_qr.py",
+      "passed": true,
+      "seconds": 0.23,
+      "output": "test_matrix_and_one_time_scope (__main__.QRTest.test_matrix_and_one_time_scope) ... ok\ntest_reissue_expire_revoke (__main__.QRTest.test_reissue_expire_revoke) ... ok\ntest_unauthenticated_and_malformed (__main__.QRTest.test_unauthenticated_and_malformed) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.067s\n\nOK\n"
+    },
+    {
+      "test": "test_merchant_types_qr.py",
+      "passed": true,
+      "seconds": 1.51,
+      "output": "PASS nine establishment types, mandatory other detail, activation-gated QR, matching PNG, public QR homepage and download, blocking\n"
+    },
+    {
+      "test": "test_pilot_p0.py",
+      "passed": true,
+      "seconds": 0.96,
+      "output": "PASS recovery: disabled config, enumeration protection, hashed single use token, session revocation and new password\nPASS public homepage, solutions, download and recovery routes\n"
+    },
+    {
+      "test": "test_pilot_security.py",
+      "passed": true,
+      "seconds": 1.24,
+      "output": "PASS verified email, hashed expiring single-use links, blocked unverified scan, recycled-email bonus denied (90 days)\nPASS six concurrent approvals award once, merchant-scoped keys, revoked session denied inside transaction, real QR stats\nPASS JSON errors/CSRF/body bounds, coherent backup and isolated restore with FK checks\n[2026-11-19 20:32:16,316] WARNING in pilot_security: Database operation unavailable\n"
+    },
+    {
+      "test": "test_production.py",
+      "passed": true,
+      "seconds": 0.56,
+      "output": "PASS production: no demo provisioning, Secure/HttpOnly cookie, HSTS, privacy routes\n\nPASS missing production credentials refused\n"
+    },
+    {
+      "test": "test_push_notifications.py",
+      "passed": true,
+      "seconds": 0.28,
+      "output": "PASS opt-in, authentication, expiry, account isolation, deduplication, opt-out, logout cascade\n"
+    },
+    {
+      "test": "test_session_persistence.py",
+      "passed": true,
+      "seconds": 0.95,
+      "output": "PASS persistent secure cookies, separate reopened sessions, 30-day expiry, role isolation, logout revocation and merchant blocking\n"
+    },
+    {
+      "test": "test_store_scan.py",
+      "passed": true,
+      "seconds": 1.35,
+      "output": "PASS: 2 QR types, 3 welcome, merchant-adjusted +5/default +1, no duplicate, cross-store protection, decline, expiry, rejoin, account removal\n"
+    },
+    {
+      "test": "test_storefront.py",
+      "passed": true,
+      "seconds": 1.19,
+      "output": "PASS active directory, joined flag, verified PNG/JPEG processing, private ownership, dated pack/promo, coupon single-use and isolation, block and stop\n"
+    },
+    {
+      "test": "test_storefront_pilot.py",
+      "passed": true,
+      "seconds": 1.17,
+      "output": "PASS storefront pilot: hours, location, gallery privacy/ownership, moderated photos, isolated wallet balances, favorites, owned offer edits, server discounts, frozen claimed coupon terms and blocked shop\n"
+    },
+    {
+      "test": "test_subscriptions_google.py",
+      "passed": true,
+      "seconds": 1.27,
+      "output": "PASS mandatory exact pin confirmation, pending, cash 19 DT idempotency, override radius, block, reactivate, expiry, role isolation\nPASS Google disabled/config guards, state rejection, invalid token, mocked verified identity/login/deletion; live OAuth not tested\n"
+    }
+  ],
+  "passed": 18,
+  "total": 18,
+  "scope": "isolated Python scripts, one process each; no live accounts or server"
+}
