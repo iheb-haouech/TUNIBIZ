@@ -11,6 +11,7 @@ def install(app,db,payload,clean,err,throttle,production):
   CREATE TABLE IF NOT EXISTS admin_sessions(digest TEXT PRIMARY KEY,expires INTEGER NOT NULL);
   """)
   c.execute("INSERT OR IGNORE INTO subscriptions(shop_id,status,paid_until) SELECT id,CASE WHEN slug='demo' AND ?=0 THEN 'active' ELSE 'pending' END,CASE WHEN slug='demo' AND ?=0 THEN '2099-12-31' ELSE '' END FROM shops",(int(production),int(production)))
+  if 'category_detail' not in {r['name'] for r in c.execute('PRAGMA table_info(subscriptions)')}:c.execute("ALTER TABLE subscriptions ADD COLUMN category_detail TEXT NOT NULL DEFAULT ''")
   cols={r['name'] for r in c.execute('PRAGMA table_info(nearby_offers)')}
   if 'radius_override' not in cols:c.execute('ALTER TABLE nearby_offers ADD COLUMN radius_override INTEGER')
   if 'location_confirmed' not in {r['name'] for r in c.execute('PRAGMA table_info(nearby_locations)')}:c.execute('ALTER TABLE nearby_locations ADD COLUMN location_confirmed INTEGER NOT NULL DEFAULT 0')
@@ -25,12 +26,14 @@ def install(app,db,payload,clean,err,throttle,production):
  @app.post('/api/merchant/register')
  def subscription_register():
   if not throttle('merchant_register',request.remote_addr or 'local',10):return err('Trop de demandes',429)
-  p=payload();name=clean(p.get('name'));city=clean(p.get('city'));address=clean(p.get('address'),180);email=clean(p.get('email'),180).lower();pw=p.get('password');category=p.get('category')
+  p=payload();name=clean(p.get('name'));city=clean(p.get('city'));address=clean(p.get('address'),180);email=clean(p.get('email'),180).lower();pw=p.get('password');category=p.get('category');detail=clean(p.get('category_detail'),80)
   try:
    lat=float(p['lat']);lon=float(p['lon'])
    if not (math.isfinite(lat) and math.isfinite(lon) and 30<=lat<=38 and 7<=lon<=12 and p.get('confirmed') is True):raise ValueError()
   except (ValueError,TypeError,KeyError):return err('Confirmez le point exact du commerce sur la carte')
-  if not name or not city or not address or not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+',email) or not isinstance(pw,str) or not 12<=len(pw)<=128 or category not in ('general','coffee','restaurant','bakery','drinks','shopping','beauty'):return err('Informations invalides')
+  if not name or not city or not address or not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+',email) or not isinstance(pw,str) or not 12<=len(pw)<=128 or category not in ('grocery_general', 'drugstore', 'grocery', 'coffee', 'restaurant', 'bakery', 'shopping', 'clothing', 'other', 'general', 'drinks', 'beauty'):return err('Informations invalides')
+  if category=='other' and not detail:return err('Précisez le type d’établissement')
+  if category!='other':detail=''
   hashed=generate_password_hash(pw)
   with db() as c:
    c.execute('BEGIN IMMEDIATE')
@@ -38,7 +41,7 @@ def install(app,db,payload,clean,err,throttle,production):
    sid=c.execute('INSERT INTO shops(slug,name,city) VALUES(?,?,?)',(secrets.token_hex(12),name,city)).lastrowid
    c.execute('INSERT INTO users(shop_id,email,password) VALUES(?,?,?)',(sid,email,hashed))
    c.execute('INSERT INTO nearby_locations(shop_id,lat,lon,address,location_confirmed) VALUES(?,?,?,?,1)',(sid,lat,lon,address))
-   c.execute('INSERT INTO subscriptions(shop_id,category) VALUES(?,?)',(sid,category))
+   c.execute('INSERT INTO subscriptions(shop_id,category,category_detail) VALUES(?,?,?)',(sid,category,detail))
   return jsonify(status='pending',price_millimes=19000),201
  @app.post('/api/admin/login')
  def subscription_login():
@@ -64,7 +67,7 @@ def install(app,db,payload,clean,err,throttle,production):
  def subscription_shops():
   with db() as c:
    if not admin(c):return err('Administration requise',401)
-   shops=[dict(r) for r in c.execute('''SELECT s.id,s.name,s.city,t.status,t.paid_until,t.radius,t.category,l.lat,l.lon,l.address,l.location_confirmed FROM shops s JOIN subscriptions t ON s.id=t.shop_id LEFT JOIN nearby_locations l ON l.shop_id=s.id ORDER BY s.id DESC''')]
+   shops=[dict(r) for r in c.execute('''SELECT s.id,s.name,s.city,t.status,t.paid_until,t.radius,t.category,t.category_detail,l.lat,l.lon,l.address,l.location_confirmed FROM shops s JOIN subscriptions t ON s.id=t.shop_id LEFT JOIN nearby_locations l ON l.shop_id=s.id ORDER BY s.id DESC''')]
    offers=[dict(r) for r in c.execute('SELECT id,shop_id,title,active,radius_override FROM nearby_offers ORDER BY id DESC')]
   return jsonify(shops=shops,offers=offers)
  @app.post('/api/admin/shop')

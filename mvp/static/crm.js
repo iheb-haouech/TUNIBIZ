@@ -34,6 +34,9 @@ function history(h){return h.length?h.map(l=>'<div class="item"><div><b>'+esc(l.
 function renderTab(){
  const el=document.querySelector('#content');if(tab==='overview'){
  el.innerHTML=businessOverview(data,period);
+ const qr=document.createElement('section');qr.className='panel section';qr.innerHTML='<h2>Mon QR de fidélité</h2><p>Présentez ce code à vos clients en caisse.</p><div id="merchant-qr-live" role="status">Chargement…</div>';el.prepend(qr);
+ api('/crm/store-qr').then(d=>{if(!qr.isConnected)return;const host=qr.querySelector('#merchant-qr-live');host.replaceChildren();const img=document.createElement('img');img.src='data:image/png;base64,'+d.png;img.alt='QR de '+d.shop;img.style.cssText='width:220px;max-width:100%;display:block;image-rendering:pixelated';const title=document.createElement('h3');title.textContent=d.shop;const dl=document.createElement('a');dl.href=img.src;dl.download='TUNIBIZ-commerce-QR.png';dl.textContent='Télécharger mon QR';const link=document.createElement('a');link.href='/merchant-qr';link.textContent='Valider les demandes';link.style.display='block';host.append(title,img,dl,link)}).catch(()=>{if(qr.isConnected)qr.querySelector('#merchant-qr-live').textContent='QR indisponible. Actualisez la page.'});
+
  el.querySelectorAll('[data-period]').forEach(b=>b.onclick=()=>{period=Number(b.dataset.period);renderTab()});
  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{tab=b.dataset.go;render()});
  }else if(tab==='customers'){

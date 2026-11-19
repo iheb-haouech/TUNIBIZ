@@ -16,7 +16,7 @@ def dashboard(c,sid):
  buyers=c.execute("""SELECT COUNT(*) buyers,COALESCE(SUM(CASE WHEN n>=2 THEN 1 ELSE 0 END),0) repeat
  FROM (SELECT COUNT(*) n FROM loyalty_ledger l JOIN crm_customers a ON a.id=l.customer_id
  WHERE a.shop_id=? AND l.kind='purchase' GROUP BY a.id)""",(sid,)).fetchone()
- shop=c.execute("SELECT s.name,s.city,COALESCE(t.category,'general') category FROM shops s LEFT JOIN subscriptions t ON t.shop_id=s.id WHERE s.id=?",(sid,)).fetchone()
+ shop=c.execute("SELECT s.name,s.city,COALESCE(t.category,'general') category,COALESCE(t.category_detail,'') category_detail FROM shops s LEFT JOIN subscriptions t ON t.shop_id=s.id WHERE s.id=?",(sid,)).fetchone()
  args=(sid,str(today),str(today))
  active=c.execute('SELECT COUNT(*) FROM campaigns WHERE shop_id=? AND active=1 AND starts<=? AND ends>=?',args).fetchone()[0]
  nearby=c.execute('SELECT COUNT(*) FROM nearby_offers WHERE shop_id=? AND active=1 AND starts<=? AND ends>=?',args).fetchone()[0]

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'premium.dart';
 import 'reward_tile.dart';
 
-String? offerPhoto(Map offer)=>rewardAssets[offer['visual']??offer['category']];
+String? offerPhoto(Map offer)=>rewardAssets[const {'grocery_general':'shopping','grocery':'shopping','clothing':'shopping'}[offer['visual']??offer['category']]??offer['visual']??offer['category']];
 String campaignStatus(Map offer,{DateTime? now}){
  if(offer['active']==0)return 'Arrêtée';
  final day=(now??DateTime.now()).toUtc().add(const Duration(hours:1)).toIso8601String().substring(0,10);

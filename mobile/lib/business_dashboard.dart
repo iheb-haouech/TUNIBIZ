@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'premium.dart';
 import 'business_offer.dart';
+import 'merchant_identity.dart';
 String dt(num n)=>(n/1000).toStringAsFixed(3)+' DT';
 class BusinessDashboard extends StatefulWidget{
  final Map<String,dynamic> data;final VoidCallback? onQr,onCustomer,onCampaign,onNearby,onApprovals,onAnnouncements;
@@ -20,7 +21,7 @@ class _BusinessDashboardState extends State<BusinessDashboard>{
  final maxAmount=daily.fold<num>(0,(n,r)=>math.max(n,r['amount'] as num));
  return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
  Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(gradient:const LinearGradient(colors:[ink,Color(0xFF174158)]),borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
- const Text('TUNIBIZ BUSINESS',style:TextStyle(color:mint,letterSpacing:2,fontSize:11,fontWeight:FontWeight.w800)),const SizedBox(height:10),Text((analytics['shop'] as Map?)?['name']?.toString()??'Votre commerce',style:const TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w800)),const SizedBox(height:8),Text((analytics['shop'] as Map?)?['city']?.toString()??'Pilotez votre relation client.',style:const TextStyle(color:Colors.white70)),const SizedBox(height:14),ClipRRect(borderRadius:BorderRadius.circular(14),child:OfferArtwork(offer:{'visual':(analytics['shop'] as Map?)?['category']??'general'},height:116)),const SizedBox(height:16),Text(dt(stats['spent'] as num),style:const TextStyle(color:mint,fontSize:34,fontWeight:FontWeight.w800)),const Text('Achats fidélité enregistrés · cumul',style:TextStyle(color:Colors.white70,fontSize:12))
+ const Text('TUNIBIZ BUSINESS',style:TextStyle(color:mint,letterSpacing:2,fontSize:11,fontWeight:FontWeight.w800)),const SizedBox(height:10),Text((analytics['shop'] as Map?)?['name']?.toString()??'Votre commerce',style:const TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w800)),const SizedBox(height:8),Text(establishmentLabel(analytics['shop'] as Map?)+' · '+((analytics['shop'] as Map?)?['city']?.toString()??''),style:const TextStyle(color:Colors.white70)),const SizedBox(height:14),ClipRRect(borderRadius:BorderRadius.circular(14),child:OfferArtwork(offer:{'visual':(analytics['shop'] as Map?)?['category']??'general'},height:116)),const SizedBox(height:16),Text(dt(stats['spent'] as num),style:const TextStyle(color:mint,fontSize:34,fontWeight:FontWeight.w800)),const Text('Achats fidélité enregistrés · cumul',style:TextStyle(color:Colors.white70,fontSize:12))
  ])),const SizedBox(height:12),
  Row(children:[Expanded(child:metric('Clients inscrits',stats['customers'].toString(),Icons.people_outline)),const SizedBox(width:10),Expanded(child:metric('Points en circulation',stats['points'].toString(),Icons.stars_outlined))]),
  const SizedBox(height:10),Row(children:[Expanded(child:metric('Consentement marketing',consent.toString()+' %',Icons.verified_user_outlined)),const SizedBox(width:10),Expanded(child:metric('Acheteurs récurrents',buyers>0?(repeat/buyers*100).round().toString()+' %':'—',Icons.repeat))]),
