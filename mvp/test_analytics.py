@@ -1,5 +1,6 @@
 import os,sys,tempfile,shutil
 from pathlib import Path
+from unittest.mock import patch
 from werkzeug.security import generate_password_hash
 P=Path(__file__).parent
 with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
@@ -12,7 +13,14 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  opt={**h,'X-Tunibiz-Analytics':'yes','X-Tunibiz-Platform':'android'}
  assert visitor.get('/api/admin/overview').status_code==401
  assert visitor.get('/api/admin/consumers').status_code==401
- assert visitor.get('/api/analytics/config').json['measurement_id']==''
+ assert visitor.get('/api/analytics/config').json['measurement_id']=='G-HP8K9C7WD5'
+ assert visitor.get('/api/analytics/config').json['gtm_container_id']=='GTM-N7B5938K'
+ with patch.dict(os.environ,{'TUNIBIZ_GOOGLE_ANALYTICS_ENABLED':'0'}):
+  assert visitor.get('/api/analytics/config').json['measurement_id']==''
+  assert visitor.get('/api/analytics/config').json['gtm_container_id']==''
+ with patch.dict(os.environ,{'TUNIBIZ_GA4_MEASUREMENT_ID':'<script>','TUNIBIZ_GTM_CONTAINER_ID':'<script>'}):
+  assert visitor.get('/api/analytics/config').json['measurement_id']==''
+  assert visitor.get('/api/analytics/config').json['gtm_container_id']==''
  assert visitor.get('/api/nearby').status_code==200
  assert visitor.post('/api/analytics/event',json={'event':'home_view'},headers=h).status_code==403
  assert visitor.post('/api/analytics/event',json={'event':'home_view','gps':'secret'},headers=opt).status_code==400

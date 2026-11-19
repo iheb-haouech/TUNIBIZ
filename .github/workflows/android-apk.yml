@@ -1,16 +1,13 @@
-name: Build TUNIBIZ Android APK
+name: Validate TUNIBIZ Android source
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - build-pilot-0.4.1
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: tunibiz-android-test
+  group: tunibiz-android-validation
   cancel-in-progress: true
 jobs:
-  apk:
+  validate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -27,25 +24,7 @@ jobs:
           flutter-version: '3.50.0'
           channel: stable
           cache: false
-      - name: Fetch dependencies
-        run: flutter pub get
-      - name: Prepare Android wrapper
-        run: chmod +x android/gradlew
-      - name: Unit and widget tests
-        run: flutter test
-      - name: Build pilot APK (ARM64, cloud HTTPS)
-        run: flutter build apk --debug --target-platform android-arm64 --dart-define=API_BASE=https://ihebhaouech.pythonanywhere.com
-      - name: Stage and verify package
-        run: |
-          mkdir -p artifacts
-          cp build/app/outputs/flutter-apk/app-debug.apk artifacts/TUNIBIZ-v0.4.1-pilot.apk
-          unzip -tq artifacts/TUNIBIZ-v0.4.1-pilot.apk
-          BT=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-          "$BT/apksigner" verify --verbose artifacts/TUNIBIZ-v0.4.1-pilot.apk
-          "$BT/aapt" dump badging artifacts/TUNIBIZ-v0.4.1-pilot.apk | grep -E '^(package:|sdkVersion:|targetSdkVersion:|native-code:|application-icon-)'
-          sha256sum artifacts/TUNIBIZ-v0.4.1-pilot.apk > artifacts/SHA256SUMS.txt
-      - name: Publish pilot test release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "v0.4.1-pilot" artifacts/TUNIBIZ-v0.4.1-pilot.apk artifacts/SHA256SUMS.txt --target "$GITHUB_SHA" --title "TUNIBIZ Android 0.4.1 Cloud pilot" --notes "Debug-signed pilot APK. Uses HTTPS cloud API, not a production-signed Play Store build. TUNIBIZ launcher logo. Google and email integrations require server configuration. Existing debug builds may need uninstall before installation." --prerelease
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+      # Permanent release signing remains local. No debug APK publication.

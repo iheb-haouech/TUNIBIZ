@@ -33,7 +33,7 @@ class PrivateBridge(private val context: Context) {
      }
      "readSession","writeSession"->{
       val scope=call.argument<String>("scope")?:""
-      if(scope !in setOf("wallet","merchant","legacy")){result.error("scope","Scope invalide",null)}
+      if(scope !in setOf("wallet","merchant","legacy","analytics")){result.error("scope","Scope invalide",null)}
       else if(call.method=="writeSession"){
        val value=call.argument<String>("value")
        if(value==null){prefs.edit().remove(scope).apply();result.success(null)}

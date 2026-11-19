@@ -24,3 +24,6 @@ mvp/*-preview.png
 **/android/app/debug/
 **/android/app/profile/
 **/android/app/release/
+
+**/google-services.json
+**/firebase-pilot-defines.json

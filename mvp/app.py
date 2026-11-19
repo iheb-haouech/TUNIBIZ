@@ -1,3 +1,4 @@
+from business_clock import today as business_today
 from flask import Flask, request, jsonify, session, send_from_directory, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from pathlib import Path
@@ -18,8 +19,17 @@ if not PRODUCTION:
  secret=key.read_text()
 app=Flask(__name__,static_folder='static')
 app.config.update(SECRET_KEY=secret,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SECURE=PRODUCTION,SESSION_COOKIE_SAMESITE='Lax',MAX_CONTENT_LENGTH=32768,PERMANENT_SESSION_LIFETIME=timedelta(days=30),SESSION_REFRESH_EACH_REQUEST=False)
+class ManagedConnection(sqlite3.Connection):
+ def __exit__(self,*args):
+  try:return super().__exit__(*args)
+  finally:self.close()
+
 def db():
- c=sqlite3.connect(DATA/'tunibiz.sqlite',timeout=10);c.row_factory=sqlite3.Row;c.execute('PRAGMA foreign_keys=ON');return c
+ c=sqlite3.connect(DATA/'tunibiz.sqlite',timeout=10,factory=ManagedConnection)
+ c.row_factory=sqlite3.Row
+ c.execute('PRAGMA foreign_keys=ON')
+ c.execute('PRAGMA busy_timeout=10000')
+ return c
 def init():
  with db() as c:
   c.executescript('''
@@ -59,10 +69,16 @@ def merchant_identity():
  with db() as c:
   u=c.execute("SELECT u.shop_id FROM merchant_sessions s JOIN users u ON u.id=s.user_id JOIN subscriptions t ON t.shop_id=u.shop_id WHERE s.digest=? AND s.expires>? AND t.status='active' AND t.paid_until>date('now','+1 hour')",(merchant_digest(token),int(time.time()))).fetchone()
  return u['shop_id'] if u else None
-def merchant():
+def merchant(connection=None):
+ if connection is not None:
+  token=session.get('merchant_token')
+  u=connection.execute("SELECT u.shop_id FROM merchant_sessions s JOIN users u ON u.id=s.user_id JOIN subscriptions t ON t.shop_id=u.shop_id WHERE s.digest=? AND s.expires>? AND t.status='active' AND t.paid_until>date('now','+1 hour')",(merchant_digest(token),int(time.time()))).fetchone() if isinstance(token,str) else None
+  if not u:abort(401)
+  return u['shop_id']
  sid=merchant_identity()
  if not sid:abort(401)
  return sid
+
 def rows(c,q,p=()):return [dict(x) for x in c.execute(q,p)]
 @app.errorhandler(401)
 def unauth(e):return err('Connexion requise',401)
@@ -150,7 +166,7 @@ def order(slug):
 def reserve(slug):
  p=payload();name=clean(p.get('customer'));phone=clean(p.get('phone'),25);day=clean(p.get('day'),10);slot=clean(p.get('slot'),5);guests=p.get('guests')
  try:
-  if date.fromisoformat(day)<date.today():raise ValueError()
+  if date.fromisoformat(day)<business_today():raise ValueError()
   datetime.strptime(slot,'%H:%M')
  except ValueError:return err('Date ou heure incorrecte')
  if not name or not re.fullmatch(r'[+0-9 ()-]{8,25}',phone) or type(guests)is not int or not 1<=guests<=30:return err('Vérifiez les informations')
@@ -175,6 +191,7 @@ def item():
  sid=merchant();p=payload();name=clean(p.get('name'));cat=clean(p.get('category'),40);price=p.get('price');iid=p.get('id')
  if not name or not cat or type(price)is not int or not 0<=price<=10000000:return err('Produit ou prix invalide')
  with db() as c:
+  c.execute('BEGIN IMMEDIATE');merchant(c)
   if iid:
    if not c.execute('UPDATE items SET name=?,category=?,price=?,active=? WHERE id=? AND shop_id=?',(name,cat,price,int(bool(p.get('active',True))),iid,sid)).rowcount:return err('Produit introuvable',404)
   else:c.execute('INSERT INTO items(shop_id,name,category,price) VALUES(?,?,?,?)',(sid,name,cat,price))
@@ -185,6 +202,7 @@ def status():
  allowed={'orders':{'new':['accepted','cancelled'],'accepted':['completed','cancelled']},'reservations':{'pending':['confirmed','cancelled'],'confirmed':['cancelled']}}
  if kind not in allowed or type(iid)is not int:return err('Action invalide')
  with db() as c:
+  c.execute('BEGIN IMMEDIATE');merchant(c)
   old=c.execute(f'SELECT status FROM {kind} WHERE id=? AND shop_id=?',(iid,sid)).fetchone()
   if not old:return err('Introuvable',404)
   if new not in allowed[kind].get(old['status'],[]):return err('Transition invalide')
@@ -214,6 +232,10 @@ from app_release import install as install_release
 install_release(app,db,payload,err)
 from storefront import install as install_storefront
 install_storefront(app,db,payload,clean,merchant,err)
+from verification import install as install_verification
+install_verification(app,db,payload,err,throttle,PRODUCTION)
+from pilot_security import install as install_pilot_security
+install_pilot_security(app,db,err,throttle)
 if __name__=='__main__':
  if PRODUCTION:raise RuntimeError('Use a production WSGI server, not Flask development server')
  print('TUNIBIZ local preview: http://127.0.0.1:8877',flush=True)

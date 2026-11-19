@@ -23,8 +23,8 @@ List<Map<String,dynamic>> nearbyMatches(List items,LatLng p){
  out.sort((a,b)=>(a['distance'] as double).compareTo(b['distance'] as double));return out;
 }
 class Nearby extends StatefulWidget{
- const Nearby({super.key,this.apiOverride});
- final Api? apiOverride;
+ const Nearby({super.key,this.apiOverride,this.active=true});
+ final Api? apiOverride;final bool active;
  @override State<Nearby> createState()=>_NearbyState();
 }
 class _NearbyState extends State<Nearby> with WidgetsBindingObserver{
@@ -39,12 +39,13 @@ class _NearbyState extends State<Nearby> with WidgetsBindingObserver{
  for(final o in filtered){final k=o['lat'].toString()+','+o['lon'].toString();groups.putIfAbsent(k,()=>[]).add(o);}return groups.values.toList();
  }
  @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);}
+ @override void didUpdateWidget(covariant Nearby oldWidget){super.didUpdateWidget(oldWidget);if(oldWidget.active&&!widget.active)stop();}
  @override void dispose(){WidgetsBinding.instance.removeObserver(this);timer?.cancel();generation++;if(widget.apiOverride==null)api.close();map.dispose();super.dispose();}
  @override void didChangeAppLifecycleState(AppLifecycleState s){visible=s==AppLifecycleState.resumed;if(!visible&&s!=AppLifecycleState.inactive){stop();}}
  void stop(){timer?.cancel();generation++;mapReady=false;if(mounted)setState((){enabled=false;matches=[];position=null;baseMap=false;accuracy=null;status='Localisation désactivée.';});}
  Future<void> start()async{if(enabled)return;unawaited(Api.usage('nearby_discovery'));setState((){enabled=true;status='Recherche des offres…';});await scan();if(mounted&&enabled)timer=Timer.periodic(const Duration(seconds:45),(_)=>scan());}
  Future<void> scan()async{
- if(!enabled||busy||!visible)return;final g=generation;setState(()=>busy=true);
+ if(!widget.active||!enabled||busy||!visible)return;final g=generation;setState(()=>busy=true);
  try{
  final result=await api.call('/nearby');
  if(!mounted||!enabled||g!=generation)return;

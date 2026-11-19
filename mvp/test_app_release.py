@@ -34,4 +34,5 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
  with sqlite3.connect(target) as con:
   assert con.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
   assert con.execute('SELECT code FROM app_release').fetchone()[0]==6
+  assert con.execute("SELECT COUNT(*) FROM admin_operations WHERE action='app_release'").fetchone()[0]==1
  print('PASS version authorization, verified flag, URL, SHA256, increasing code and consistent SQLite snapshot')

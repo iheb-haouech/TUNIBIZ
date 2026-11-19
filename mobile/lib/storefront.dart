@@ -23,15 +23,17 @@ class StoresPage extends StatefulWidget{
  @override State<StoresPage> createState()=>_StoresPageState();
 }
 class _StoresPageState extends State<StoresPage>{
- List rows=[];bool loading=true;String error='',query='';bool joined=false;
+ List rows=[];bool loading=true;String error='',query='';bool joined=false,favorites=false;String category='';
  @override void initState(){super.initState();load();}
  Future<void> load()async{try{final d=await widget.api.call('/stores');if(mounted)setState((){rows=d['stores'];error='';});}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>loading=false);}}
  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Nos établissements'),actions:[IconButton(onPressed:load,icon:const Icon(Icons.refresh))]),body:ListView(padding:const EdgeInsets.all(18),children:[
  const Text('Découvrez le commerce local',style:TextStyle(color:ink,fontSize:28,fontWeight:FontWeight.w800)),const Text('Promotions, packs et coupons chez les établissements actifs.'),const SizedBox(height:14),
  TextField(onChanged:(v)=>setState(()=>query=v.toLowerCase()),decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Nom, ville ou type')),
+ DropdownButtonFormField<String>(isExpanded:true,initialValue:category,decoration:const InputDecoration(labelText:'Catégorie'),items:[const DropdownMenuItem(value:'',child:Text('Toutes les catégories')),for(final e in establishmentTypes.entries)DropdownMenuItem(value:e.key,child:Text(e.value))],onChanged:(v)=>setState(()=>category=v??'')),
+ FilterChip(label:const Text('Mes favoris'),selected:favorites,onSelected:(v)=>setState(()=>favorites=v)),
  FilterChip(label:const Text('Mes commerces uniquement'),selected:joined,onSelected:(v)=>setState(()=>joined=v)),
  if(loading)const LinearProgressIndicator(),if(error.isNotEmpty)Text(error),
- for(final s in rows.where((s)=>(!joined||s['joined']==true)&&(s['name'].toString()+' '+s['city'].toString()+' '+establishmentLabel(s)).toLowerCase().contains(query)))Padding(padding:const EdgeInsets.only(top:12),child:Material(color:Colors.white,clipBehavior:Clip.antiAlias,borderRadius:BorderRadius.circular(22),child:InkWell(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>StorePage(api:widget.api,id:s['id'] as int))),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[StoreImage(s['cover']),ListTile(title:Text(s['name'],style:const TextStyle(fontWeight:FontWeight.w800,fontSize:20)),subtitle:Text(establishmentLabel(s)+' · '+s['city'].toString()),trailing:Icon(s['joined']==true?Icons.favorite:Icons.chevron_right,color:cobalt))])))),
+ for(final s in rows.where((s)=>(!joined||s['joined']==true)&&(!favorites||s['favorite']==true)&&(category.isEmpty||s['category']==category)&&(s['name'].toString()+' '+s['city'].toString()+' '+establishmentLabel(s)).toLowerCase().contains(query)))Padding(padding:const EdgeInsets.only(top:12),child:Material(color:Colors.white,clipBehavior:Clip.antiAlias,borderRadius:BorderRadius.circular(22),child:InkWell(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>StorePage(api:widget.api,id:s['id'] as int))),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[StoreImage(s['cover']),ListTile(title:Text(s['name'],style:const TextStyle(fontWeight:FontWeight.w800,fontSize:20)),subtitle:Text(establishmentLabel(s)+' · '+s['city'].toString()),trailing:Icon(s['joined']==true?Icons.favorite:Icons.chevron_right,color:cobalt))])))),
  if(!loading&&rows.isEmpty)const Text('Aucun établissement actif.')
  ]));
 }
@@ -57,9 +59,13 @@ class _StorePageState extends State<StorePage>{
  @override void initState(){super.initState();load();}
  Future<void> load()async{try{final d=await widget.api.call('/stores/'+widget.id.toString());if(mounted)setState((){data=d;error='';});}catch(e){if(mounted)setState((){error=e.toString();data=null;});}}
  Future<void> claim(int id)async{if(busy)return;setState(()=>busy=true);try{await widget.api.call('/storefront/coupon/claim',{'id':id});await load();}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}}
- @override Widget build(BuildContext context){final d=data;return Scaffold(appBar:AppBar(title:Text(d?['name']??'Établissement'),actions:[IconButton(onPressed:load,icon:const Icon(Icons.refresh))]),body:ListView(padding:const EdgeInsets.all(18),children:[
+ @override Widget build(BuildContext context){final d=data;return Scaffold(appBar:AppBar(title:Text(d?['name']??'Établissement'),actions:[if(d!=null)IconButton(tooltip:'Favori',onPressed:busy?null:()async{setState(()=>busy=true);try{await widget.api.call('/stores/favorite',{'id':widget.id,'favorite':d['favorite']!=true});await load();}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}},icon:Icon(d['favorite']==true?Icons.favorite:Icons.favorite_outline)),IconButton(onPressed:load,icon:const Icon(Icons.refresh))]),body:ListView(padding:const EdgeInsets.all(18),children:[
  if(error.isNotEmpty)Text(error,style:const TextStyle(color:Colors.red)),if(d==null&&error.isEmpty)const LinearProgressIndicator(),
  if(d!=null)...[ClipRRect(borderRadius:BorderRadius.circular(24),child:StoreImage(d['cover'],height:210)),const SizedBox(height:16),Text(d['name'],style:const TextStyle(fontSize:30,color:ink,fontWeight:FontWeight.w900)),Text(establishmentLabel(d)+' · '+d['city'].toString()),if(d['description'].toString().isNotEmpty)Text(d['description']),
+ if((d['address']??'').toString().isNotEmpty)ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.location_on_outlined),title:Text(d['address'].toString())),
+ if((d['hours']??'').toString().isNotEmpty)ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.schedule),title:Text(d['hours'].toString())),
+ if(d['points']!=null)Card(child:ListTile(leading:const Icon(Icons.loyalty,color:cobalt),title:Text('${d['points']} points dans ce commerce'),subtitle:Text((d['rewards'] as List? ?? []).map((r)=>'${r['title']} · ${r['cost']} pts').join(' · ')))),
+ if((d['gallery'] as List? ?? []).isNotEmpty)SizedBox(height:145,child:ListView(scrollDirection:Axis.horizontal,children:[for(final id in d['gallery'])Padding(padding:const EdgeInsets.only(right:8),child:SizedBox(width:210,child:ClipRRect(borderRadius:BorderRadius.circular(16),child:StoreImage(id,height:145))))])),
  const SizedBox(height:18),Wrap(spacing:8,children:[for(final e in {'all':'Tout',...kinds}.entries)ChoiceChip(label:Text(e.value),selected:filter==e.key,onSelected:(_)=>setState(()=>filter=e.key))]),
  if((d['offers'] as List).isEmpty&&(d['nearby'] as List).isEmpty)const Padding(padding:EdgeInsets.all(16),child:Text('Aucune offre en cours.')),
  for(final o in (d['offers'] as List).where((o)=>filter=='all'||o['kind']==filter))Padding(padding:const EdgeInsets.only(top:10),child:StoreListing(offer:o,action:o['kind']=='coupon'?couponAction(o,d):null)),
@@ -82,10 +88,10 @@ class _StoreManagerState extends State<StoreManager>{
  Future<void> run(Future<void> Function() f)async{if(busy)return;setState((){busy=true;error='';});try{await f();}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> load()=>run(()async{final d=await widget.api.call('/storefront/manage');if(mounted)setState(()=>data=d);});
  Future<String?> upload(String? raw)async{if(raw==null)return null;return (await widget.api.call('/storefront/photo',{'image':raw}))['id'] as String;}
- Future<void> edit(bool profile)async{
- final result=await Navigator.push<Map<String,dynamic>>(context,MaterialPageRoute(builder:(_)=>StoreEditor(profile:profile,initial:data?['profile'] as Map?)));
+ Future<void> edit(bool profile,{Map? offer})async{
+ final result=await Navigator.push<Map<String,dynamic>>(context,MaterialPageRoute(builder:(_)=>StoreEditor(profile:profile,initial:profile ? (data?['profile'] as Map?) : offer)));
  if(result==null||!mounted)return;
- await run(()async{final photo=await upload(result.remove('raw') as String?);if(profile){if(photo!=null)result['cover']=photo;await widget.api.call('/storefront/profile',result);}else{result['photo']=photo;await widget.api.call('/storefront/offer',result);}final d=await widget.api.call('/storefront/manage');if(mounted)setState(()=>data=d);});
+ await run(()async{final photo=await upload(result.remove('raw') as String?);if(profile){if(photo!=null)result['cover']=photo;await widget.api.call('/storefront/profile',result);}else{result['photo']=photo??offer?['photo'];if(offer!=null)result['id']=offer['id'];await widget.api.call('/storefront/offer',result);}final d=await widget.api.call('/storefront/manage');if(mounted)setState(()=>data=d);});
  }
  Future<void> redeem()async{
  String code='';final result=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Valider un coupon en caisse'),content:TextField(onChanged:(v)=>code=v.trim().toUpperCase(),decoration:const InputDecoration(labelText:'Code TN-…')),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Valider définitivement'))]));
@@ -97,7 +103,8 @@ class _StoreManagerState extends State<StoreManager>{
  ClipRRect(borderRadius:BorderRadius.circular(22),child:StoreImage(d['profile']['cover'],height:200)),Text(d['profile']['name'],style:const TextStyle(fontWeight:FontWeight.w900,fontSize:28,color:ink)),Text(d['profile']['description']),OutlinedButton.icon(onPressed:busy?null:()=>edit(true),icon:const Icon(Icons.edit),label:const Text('Modifier la vitrine et la photo')),
  FilledButton.icon(onPressed:busy?null:()=>edit(false),icon:const Icon(Icons.add_photo_alternate),label:const Text('Créer une promotion, un pack ou un coupon')),
  OutlinedButton.icon(onPressed:busy?null:redeem,icon:const Icon(Icons.local_offer),label:const Text('Valider un coupon client')),const SizedBox(height:16),
- const Text('Mes offres',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),for(final o in d['offers'])StoreListing(offer:o,action:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(campaignStatus(o)),if(o['active']==1)TextButton(onPressed:busy?null:()=>run(()async{await widget.api.call('/storefront/stop',{'id':o['id']});final x=await widget.api.call('/storefront/manage');if(mounted)setState(()=>data=x);}),child:const Text('Arrêter cette offre'))]))
+ OutlinedButton.icon(onPressed:busy?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>StorePage(api:widget.api,id:d['profile']['id']))),icon:const Icon(Icons.visibility_outlined),label:const Text('Prévisualiser ma vitrine')),
+ const Text('Mes offres',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),for(final o in d['offers'])StoreListing(offer:o,action:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(campaignStatus(o)),if(o['active']==1)TextButton(onPressed:busy?null:()=>edit(false,offer:o),child:const Text('Modifier cette offre')),if(o['active']==1)TextButton(onPressed:busy?null:()=>run(()async{await widget.api.call('/storefront/stop',{'id':o['id']});final x=await widget.api.call('/storefront/manage');if(mounted)setState(()=>data=x);}),child:const Text('Arrêter cette offre'))]))
  ] ]));}
 }
 class StoreEditor extends StatefulWidget{
@@ -106,11 +113,12 @@ class StoreEditor extends StatefulWidget{
 }
 class _StoreEditorState extends State<StoreEditor>{
  final form=GlobalKey<FormState>();final values=<String,String>{};String kind='promotion',error='';String? image;bool picking=false,remove=false;
+ @override void initState(){super.initState();kind=widget.initial?['kind']?.toString()??'promotion';}
  Future<void> pick()async{setState(()=>picking=true);try{final v=await const MethodChannel('tn.tunibiz/photo').invokeMethod<String>('pick');if(v!=null&&mounted)setState((){image=v;remove=false;});}catch(e){if(mounted)setState(()=>error='Impossible de sélectionner la photo.');}finally{if(mounted)setState(()=>picking=false);}}
  Widget field(String key,String label,{String initial='',bool numeric=false,bool required=true})=>Padding(padding:const EdgeInsets.only(bottom:12),child:TextFormField(key:ValueKey(key),initialValue:initial,keyboardType:numeric?const TextInputType.numberWithOptions(decimal:true):TextInputType.text,decoration:InputDecoration(labelText:label),maxLength:key=='description'?1000:key=='title'?100:null,onSaved:(v)=>values[key]=(v??'').trim(),validator:(v)=>required&&(v==null||v.trim().isEmpty)?'Requis':null));
  void save(){
  if(!form.currentState!.validate())return;form.currentState!.save();
- if(widget.profile){Navigator.pop(context,{'description':values['description'],'cover':remove?null:widget.initial?['cover'],'raw':image});return;}
+ if(widget.profile){Navigator.pop(context,{'description':values['description'],'hours':values['hours'],'cover':remove?null:widget.initial?['cover'],'raw':image});return;}
  int? price(String key){final v=double.tryParse(values[key]!.replaceAll(',','.'));return v==null||!v.isFinite||v<0||v>10000?null:(v*1000).round();}
  final old=kind=='coupon'?null:price('old'),next=kind=='coupon'?null:price('new'),discount=kind=='coupon'?int.tryParse(values['discount']??''):null;
  if(kind=='coupon'?(discount==null||discount<1||discount>100):(old==null||next==null||next>=old)){setState(()=>error='Vérifiez les prix ou la réduction.');return;}
@@ -120,9 +128,10 @@ class _StoreEditorState extends State<StoreEditor>{
  if(image!=null)Image.memory(base64Decode(image!),height:180,fit:BoxFit.cover)else if(widget.profile&&!remove)StoreImage(widget.initial?['cover']),
  OutlinedButton.icon(onPressed:picking?null:pick,icon:const Icon(Icons.photo_library),label:const Text('Choisir ma photo')),if(widget.profile)TextButton(onPressed:()=>setState((){remove=true;image=null;}),child:const Text('Retirer la photo')),
  if(!widget.profile)DropdownButtonFormField<String>(initialValue:kind,items:[for(final e in kinds.entries)DropdownMenuItem(value:e.key,child:Text(e.value))],onChanged:(v)=>setState(()=>kind=v!),decoration:const InputDecoration(labelText:'Type d’offre')),
- if(!widget.profile)field('title','Titre'),
- field('description',widget.profile?'Description du commerce':'Conditions et contenu du pack',initial:widget.profile?(widget.initial?['description']?.toString()??''):'',required:!widget.profile),
- if(!widget.profile)...[field('starts','Début AAAA-MM-JJ',initial:dayNow()),field('ends','Fin AAAA-MM-JJ',initial:dayNow()),if(kind=='coupon')field('discount','Réduction %',numeric:true)else...[field('old','Prix initial DT',numeric:true),field('new','Prix promotionnel DT',numeric:true)]],
+ if(!widget.profile)field('title','Titre',initial:widget.initial?['title']?.toString()??''),
+ field('description',widget.profile?'Description du commerce':'Conditions et contenu du pack',initial:widget.initial?['description']?.toString()??'',required:!widget.profile),
+ if(widget.profile)field('hours','Horaires',initial:widget.initial?['hours']?.toString()??'',required:false),
+ if(!widget.profile)...[field('starts','Début AAAA-MM-JJ',initial:widget.initial?['starts']?.toString()??dayNow()),field('ends','Fin AAAA-MM-JJ',initial:widget.initial?['ends']?.toString()??dayNow()),if(kind=='coupon')field('discount','Réduction %',numeric:true,initial:widget.initial?['discount']?.toString()??'')else...[field('old','Prix initial DT',numeric:true,initial:widget.initial?['old_price']==null?'':((widget.initial!['old_price'] as num)/1000).toString()),field('new','Prix promotionnel DT',numeric:true,initial:widget.initial?['new_price']==null?'':((widget.initial!['new_price'] as num)/1000).toString())]],
  if(error.isNotEmpty)Text(error,style:const TextStyle(color:Colors.red)),FilledButton(onPressed:picking?null:save,child:const Text('Enregistrer'))
  ])));
 }

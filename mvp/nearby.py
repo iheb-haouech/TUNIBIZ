@@ -1,4 +1,5 @@
 """Nearby offers: public campaign catalogue; visitor coordinates never sent here."""
+from business_clock import today as business_today
 from datetime import date
 import math
 from flask import jsonify, send_from_directory
@@ -15,7 +16,7 @@ def install(app,db,payload,clean,merchant,err):
  def nearby_page():return send_from_directory(app.static_folder,'nearby.html')
  @app.get('/api/nearby')
  def nearby():
-  today=date.today().isoformat()
+  today=business_today().isoformat()
   with db() as c:
    offers=[dict(r) for r in c.execute("""SELECT o.id,s.name shop,l.lat,l.lon,l.address,o.title,o.description,o.ends,o.category,COALESCE(o.radius_override,t.radius) radius FROM nearby_offers o JOIN nearby_locations l ON o.shop_id=l.shop_id JOIN shops s ON s.id=o.shop_id JOIN subscriptions t ON t.shop_id=s.id WHERE t.status='active' AND t.paid_until>date('now','+1 hour') AND l.location_confirmed=1 AND o.active=1 AND o.starts<=? AND o.ends>=? ORDER BY o.id DESC""",(today,today))]
   return jsonify(offers=offers)
@@ -34,7 +35,9 @@ def install(app,db,payload,clean,merchant,err):
   except (KeyError,TypeError,ValueError):return err('Coordonnées du commerce invalides (Tunisie)')
   address=clean(p.get('address'),180)
   if not address:return err('Adresse requise')
-  with db() as c:c.execute('INSERT INTO nearby_locations(shop_id,lat,lon,address,location_confirmed) VALUES(?,?,?,?,1) ON CONFLICT(shop_id) DO UPDATE SET lat=excluded.lat,lon=excluded.lon,address=excluded.address,location_confirmed=1',(sid,lat,lon,address))
+  with db() as c:
+   c.execute('BEGIN IMMEDIATE');merchant(c)
+   c.execute('INSERT INTO nearby_locations(shop_id,lat,lon,address,location_confirmed) VALUES(?,?,?,?,1) ON CONFLICT(shop_id) DO UPDATE SET lat=excluded.lat,lon=excluded.lon,address=excluded.address,location_confirmed=1',(sid,lat,lon,address))
   return jsonify(ok=True)
  @app.post('/api/nearby/offer')
  def nearby_offer():
@@ -44,6 +47,7 @@ def install(app,db,payload,clean,merchant,err):
   except ValueError:return err('Dates invalides')
   if not title or not description or category not in ('general','coffee','restaurant','bakery','drinks','shopping','beauty'):return err('Titre, conditions et categorie valides requis')
   with db() as c:
+   c.execute('BEGIN IMMEDIATE');merchant(c)
    if not c.execute('SELECT 1 FROM nearby_locations WHERE shop_id=?',(sid,)).fetchone():return err('Configurez votre établissement en premier')
    oid=c.execute('INSERT INTO nearby_offers(shop_id,title,description,starts,ends,category) VALUES(?,?,?,?,?,?)',(sid,title,description,starts,ends,category)).lastrowid
   return jsonify(id=oid),201
@@ -52,5 +56,6 @@ def install(app,db,payload,clean,merchant,err):
   sid=merchant();p=payload()
   if type(p.get('id')) is not int:return err('Identifiant invalide')
   with db() as c:
+   c.execute('BEGIN IMMEDIATE');merchant(c)
    if not c.execute('UPDATE nearby_offers SET active=0 WHERE shop_id=? AND id=?',(sid,p['id'])).rowcount:return err('Offre introuvable',404)
   return jsonify(ok=True)

@@ -1,15 +1,16 @@
 """Password recovery via configured HTTPS transactional email provider."""
 import os,re,secrets,hashlib,time
+import gmail_delivery
+import email_templates
 from flask import request,jsonify,send_from_directory,session
 from werkzeug.security import generate_password_hash
 ORIGIN='https://ihebhaouech.pythonanywhere.com'
 GENERIC='Si un compte correspondant existe, un lien de réinitialisation sera envoyé.'
 def digest(s):return hashlib.sha256(s.encode()).hexdigest()
-def ready():return bool(os.getenv('TUNIBIZ_BREVO_KEY') and os.getenv('TUNIBIZ_EMAIL_FROM'))
+def ready():return gmail_delivery.ready()
 def send_link(email,token):
- import requests
- r=requests.post('https://api.brevo.com/v3/smtp/email',headers={'api-key':os.environ['TUNIBIZ_BREVO_KEY']},json={'sender':{'name':'TUNIBIZ','email':os.environ['TUNIBIZ_EMAIL_FROM']},'to':[{'email':email}],'subject':'Réinitialisation de votre mot de passe TUNIBIZ','textContent':'Votre lien à usage unique (valable 20 minutes) : '+ORIGIN+'/reset-password#'+token+'\nSi vous n’avez rien demandé, ignorez ce message.'},timeout=8)
- r.raise_for_status()
+ gmail_delivery.send(email,*email_templates.password_reset(token))
+
 def install(app,db,payload,err,throttle):
  with db() as c:
   c.execute('CREATE TABLE IF NOT EXISTS password_resets(digest TEXT PRIMARY KEY,kind TEXT NOT NULL,account_id INTEGER NOT NULL,expires INTEGER NOT NULL,password_version TEXT NOT NULL)')
