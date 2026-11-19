@@ -78,6 +78,9 @@ def install(app,db,payload,clean,err):
   with db() as c:
    a=account(c)
    if not a:return err('Connectez votre portefeuille',401)
+   now=int(time.time())
+   renewed=c.execute('UPDATE wallet_sessions SET expires=? WHERE digest=? AND expires>? AND expires<?',(now+30*86400,digest(session['wallet_token']),now,now+29*86400)).rowcount
+   if renewed:session.permanent=True;session.modified=True
    cards=[dict(r) for r in c.execute("""WITH balances AS (
      SELECT customer_id,SUM(points) points,COUNT(CASE WHEN kind='purchase' THEN 1 END) purchases
      FROM loyalty_ledger GROUP BY customer_id)

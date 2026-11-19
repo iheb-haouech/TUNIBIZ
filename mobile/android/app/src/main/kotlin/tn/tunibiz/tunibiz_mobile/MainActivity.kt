@@ -23,6 +23,7 @@ import java.util.Locale
 
 class MainActivity: FlutterActivity() {
  private var locationResult: MethodChannel.Result?=null
+ private var permissionOnlyResult: MethodChannel.Result?=null
  private var notificationResult: MethodChannel.Result?=null
  private var listener: LocationListener?=null
  private val handler=Handler(Looper.getMainLooper())
@@ -36,6 +37,13 @@ class MainActivity: FlutterActivity() {
   PrivateBridge(this).attach(MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/private"))
   MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/nearby").setMethodCallHandler{call,result->
    when(call.method){
+    "onboardingNeeded"->result.success(!getSharedPreferences("tn_permissions",MODE_PRIVATE).getBoolean("asked",false))
+    "onboardingDone"->{getSharedPreferences("tn_permissions",MODE_PRIVATE).edit().putBoolean("asked",true).apply();result.success(true)}
+    "permissionLocation"->{
+     if(checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED)result.success(true)
+     else if(permissionOnlyResult!=null||locationResult!=null)result.success(false)
+     else{permissionOnlyResult=result;requestPermissions(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION),73)}
+    }
     "position"->{
      if(locationResult!=null){result.error("busy","Recherche en cours",null)}
      else{locationResult=result;if(checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION),71)}else locate()}
@@ -94,6 +102,7 @@ class MainActivity: FlutterActivity() {
  override fun onRequestPermissionsResult(requestCode:Int,permissions:Array<out String>,grantResults:IntArray){
   super.onRequestPermissionsResult(requestCode,permissions,grantResults)
   if(requestCode==71){if(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED)locate()else finishLocation(null)}
+  if(requestCode==73){permissionOnlyResult?.success(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED);permissionOnlyResult=null}
   if(requestCode==72){notificationResult?.success(grantResults.firstOrNull()==PackageManager.PERMISSION_GRANTED && nm.areNotificationsEnabled());notificationResult=null}
  }
 }

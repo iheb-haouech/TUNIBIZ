@@ -44,6 +44,9 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
   for table in ('wallet_sessions','merchant_sessions'):
    expires=c.execute('SELECT expires FROM '+table).fetchone()[0]
    assert 29*86400<expires-time.time()<=30*86400
+ with db() as c:c.execute('UPDATE wallet_sessions SET expires=?',(int(time.time())+86400,))
+ renewed=get(a2,'/wallet');assert renewed.status_code==200 and 'Expires=' in renewed.headers.get('Set-Cookie','')
+ with db() as c:assert c.execute('SELECT expires FROM wallet_sessions').fetchone()[0]-time.time()>29*86400
  post(a2,'/wallet/logout',{})
  assert get(reopen(w),'/wallet').status_code==401
  # Merchant block invalidates even a saved cookie.

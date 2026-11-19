@@ -27,7 +27,7 @@ class Api {
   for(final c in res.cookies){if(c.maxAge==0){cookies.remove(c.name);}else{cookies[c.name]=c;}}
   if(res.statusCode>=300&&res.statusCode<400){await res.drain();throw Exception('Redirection serveur refusée');}
  final decoded=jsonDecode(await res.transform(utf8.decoder).join()) as Map<String,dynamic>;
-  if(res.statusCode>=400){if(res.statusCode==401&&((scope=='wallet'&&path=='/wallet')||(scope=='merchant'&&path=='/crm')||(scope=='legacy'&&path=='/loyalty'))){await clearLocal();throw SessionExpired();}throw Exception(decoded['error']??'Erreur serveur');}
+  if(res.statusCode>=400){if(res.statusCode==401&&((scope=='wallet'&&['/wallet','/wallet/store-scan','/wallet/store-scans'].contains(path))||(scope=='merchant'&&path=='/crm')||(scope=='legacy'&&path=='/loyalty'))){await clearLocal();throw SessionExpired();}throw Exception(decoded['error']??'Erreur serveur');}
   if(scope!=null){
    if(['/wallet/login','/wallet/register','/google/login','/login','/loyalty/login'].contains(path))signedIn=true;
    if(['/wallet/logout','/wallet/delete','/logout'].contains(path)||(path=='/loyalty/logout'&&scope=='legacy')){await clearLocal();}

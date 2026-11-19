@@ -30,6 +30,7 @@ void main(){
   addTearDown(tester.view.resetPhysicalSize);addTearDown(tester.view.resetDevicePixelRatio);
   final api=WalletFakeApi();addTearDown(api.close);
   await tester.pumpWidget(MaterialApp(home:ConsumerWallet(apiOverride:api,cardBuilder:(api,d)=>Scaffold(appBar:AppBar(),body:Text(d['shop'])))));
+  await tester.pumpAndSettle();
   await tester.enterText(find.byType(TextField).at(0),'qa@example.test');
   await tester.enterText(find.byType(TextField).at(1),'Long-Test-Passphrase');
   await tester.ensureVisible(find.text('Se connecter'));await tester.tap(find.text('Se connecter'));await tester.pumpAndSettle();

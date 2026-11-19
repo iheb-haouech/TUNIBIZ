@@ -9,23 +9,28 @@ import 'premium.dart';
 typedef CardBuilder = Widget Function(Api api,Map<String,dynamic> data);
 Future<void>? googleInitialization;
 class ConsumerWallet extends StatefulWidget{
- final CardBuilder cardBuilder;final Api? apiOverride;
- const ConsumerWallet({super.key,required this.cardBuilder,this.apiOverride});
+ final CardBuilder cardBuilder;final Api? apiOverride;final bool scanOnOpen;final Future<String?> Function(BuildContext)? scannerOverride;
+ const ConsumerWallet({super.key,required this.cardBuilder,this.apiOverride,this.scanOnOpen=false,this.scannerOverride});
  @override State<ConsumerWallet> createState()=>_ConsumerWalletState();
 }
 class _ConsumerWalletState extends State<ConsumerWallet>{
  late final Api api=widget.apiOverride??Api(scope:'wallet');
  final name=TextEditingController(),email=TextEditingController(),password=TextEditingController();
  Map<String,dynamic>? data;bool registering=false,busy=false;String message='';
- Timer? poll;bool polling=false;Map<String,String> seen={};
- @override void initState(){super.initState();if(widget.apiOverride==null)restoreSession();poll=Timer.periodic(const Duration(seconds:30),(_)=>checkRequests());}
- Future<void> restoreSession()async{await run(()async{if(await api.restore()&&mounted){await api.init();await refresh();}});}
+ Timer? poll;bool polling=false,restoring=true,scanPending=false,scanning=false;Map<String,String> seen={};
+ @override void initState(){super.initState();scanPending=widget.scanOnOpen;restoreSession();poll=Timer.periodic(const Duration(seconds:30),(_)=>checkRequests());}
+ Future<void> restoreSession()async{
+ await run(()async{if(await api.restore()&&mounted){await api.init();await refresh();}});
+ if(mounted)setState(()=>restoring=false);maybeScan();
+ }
+ void maybeScan(){if(!mounted||!scanPending||restoring||busy||data==null)return;scanPending=false;WidgetsBinding.instance.addPostFrameCallback((_) {if(mounted)scanMerchant();});}
+
  Future<void> checkRequests()async{if(!mounted||data==null||busy||polling||WidgetsBinding.instance.lifecycleState!=AppLifecycleState.resumed||ModalRoute.of(context)?.isCurrent!=true)return;polling=true;try{final d=await api.call('/wallet/store-scans');if(!mounted||data==null)return;for(final r in d['requests']){final id=r['id'].toString(),state=r['state'].toString();if(seen[id]=='pending'&&(state=='approved'||state=='rejected')){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(state=='approved'?'Achat validé : +'+r['points'].toString()+' points':'Demande refusée')));await refresh();}seen[id]=state;}}catch(_){}finally{polling=false;}}
  @override void dispose(){poll?.cancel();name.dispose();email.dispose();password.dispose();if(widget.apiOverride==null)api.close();super.dispose();}
  Future<void> run(Future<void> Function() fn)async{
  if(busy)return;setState((){busy=true;message='';});
  try{await fn();}catch(e){if(mounted)setState((){if(e is SessionExpired)data=null;message=e.toString().replaceFirst('Exception: ','');});}
- finally{if(mounted)setState(()=>busy=false);}
+ finally{if(mounted)setState(()=>busy=false);maybeScan();}
  }
  Future<void> refresh()async{final d=await api.call('/wallet');if(mounted)setState(()=>data=d);}
  Future<void> signIn()async{
@@ -43,13 +48,27 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  await api.call('/google/login',{'id_token':token});await refresh();
  });
  Future<void> scanMerchant()async{
- final slug=await scanStore(context);if(!mounted||slug==null)return;
+ if(scanning||busy||data==null)return;scanning=true;
+ try{
+ final slug=await (widget.scannerOverride??scanStore)(context);if(!mounted||slug==null)return;
+ Map<String,dynamic>? result;String shop='';
  await run(()async{
  final info=await api.call('/store/'+slug);if(!mounted)return;
- final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:Text(info['shop']['name'].toString()),content:const Text('Rejoindre ce commerce ou demander la validation de votre achat ?'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Confirmer'))]));
- if(ok!=true||!mounted)return;final r=await api.call('/wallet/store-scan',{'slug':slug});if(r['id']!=null)seen[r['id'].toString()]='pending';await refresh();
- if(mounted)setState(()=>message=r['status']=='welcome'?'Bienvenue : +3 points !':'Demande envoyée. Le commerçant doit valider vos points.');
+ shop=info['shop']['name'].toString();
+ final r=await api.call('/wallet/store-scan',{'slug':slug});
+ result=r;
+ if(r['id']!=null)seen[r['id'].toString()]='pending';
+ await refresh();
  });
+ final r=result;if(!mounted||r==null)return;
+ await showModalBottomSheet<void>(context:context,useSafeArea:true,showDragHandle:true,builder:(ctx)=>SingleChildScrollView(child:Padding(padding:const EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,children:[
+ Icon(r['status']=='welcome'?Icons.celebration_outlined:Icons.hourglass_top,color:cobalt,size:54),
+ const SizedBox(height:12),Text(shop,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:22)),
+ Text(r['status']=='welcome'?'+3 points de bienvenue':'Achat en attente de validation',style:const TextStyle(fontSize:18,fontWeight:FontWeight.bold)),
+ const SizedBox(height:8),Text(r['status']=='welcome'?'Votre carte est créée.':'Présentez cet écran au commerçant. Il valide l’achat et choisit les points.',textAlign:TextAlign.center),
+ const SizedBox(height:12),FilledButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Terminé'))
+ ]))));
+ }finally{scanning=false;}
  }
  Future<void> scanHistory()async=>run(()async{
  final d=await api.call('/wallet/store-scans');if(!mounted)return;
@@ -101,16 +120,16 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  ])),const SizedBox(height:18),
  FilledButton.icon(onPressed:busy?null:scanMerchant,icon:const Icon(Icons.qr_code_scanner),label:const Text('Scanner le QR du commerce')),
  OutlinedButton(onPressed:busy?null:scanHistory,child:const Text('Mes demandes QR')),
- FilledButton.icon(onPressed:busy?null:addCard,icon:const Icon(Icons.add_card),label:const Text('Ajouter une carte')),
+ TextButton.icon(onPressed:busy?null:addCard,icon:const Icon(Icons.add_card),label:const Text('Ajouter une ancienne carte par code')),
  const SizedBox(height:10),const Text('Mes commerces',style:TextStyle(color:ink,fontSize:24,fontWeight:FontWeight.w800)),const Text('Les points ne sont pas transférables entre commerces.',style:TextStyle(color:muted,fontSize:12)),
- if(cards.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:30),child:Center(child:Text('Aucune carte. Demandez votre code au commerçant.'))),
+ if(cards.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:30),child:Center(child:Text('Aucune carte. Scannez le QR d’un commerce pour commencer.'))),
  for(final card in cards)Padding(padding:const EdgeInsets.only(top:12),child:WalletCard(card:Map<String,dynamic>.from(card),onOpen:busy?null:()=>selectCard(card['id'] as int),onRemove:busy?null:()=>unlink(card['id'] as int))),
  if(profile['google_linked']==true)TextButton(onPressed:busy?null:signInGoogle,child:const Text('Reconnexion Google')),
  const SizedBox(height:28),TextButton(onPressed:busy?null:deleteAccount,child:const Text('Supprimer mon compte',style:TextStyle(color:Colors.red))),
  ]);
  }
  Widget stat(String value,String label)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(value,style:const TextStyle(color:mint,fontSize:30,fontWeight:FontWeight.w800)),Text(label,style:const TextStyle(color:Colors.white70,fontSize:12))]);
- @override Widget build(BuildContext context)=>Scaffold(backgroundColor:paper,appBar:AppBar(title:const Text('Mon portefeuille'),actions:data==null?[]:[IconButton(tooltip:'Actualiser',onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),IconButton(tooltip:'Déconnexion',onPressed:busy?null:logout,icon:const Icon(Icons.logout))]),body:ListView(padding:const EdgeInsets.all(18),children:[if(busy)const LinearProgressIndicator(),if(message.isNotEmpty)Padding(padding:const EdgeInsets.all(8),child:Text(message,style:const TextStyle(color:Colors.red))),data==null?login():wallet(data!)]));
+ @override Widget build(BuildContext context)=>Scaffold(backgroundColor:paper,appBar:AppBar(title:const Text('Mon portefeuille'),actions:data==null?[]:[IconButton(tooltip:'Actualiser',onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),IconButton(tooltip:'Déconnexion',onPressed:busy?null:logout,icon:const Icon(Icons.logout))]),body:ListView(padding:const EdgeInsets.all(18),children:[if(busy)const LinearProgressIndicator(),if(message.isNotEmpty)Padding(padding:const EdgeInsets.all(8),child:Text(message,style:const TextStyle(color:Colors.red))),restoring?const Padding(padding:EdgeInsets.all(32),child:Center(child:CircularProgressIndicator())):data==null?(api.signedIn?Column(children:[const Text('Votre compte est enregistré. Connexion au serveur indisponible.'),FilledButton(onPressed:busy?null:()=>run(()async{await api.init();await refresh();}),child:const Text('Réessayer'))]):login()):wallet(data!)]));
 }
 class WalletCard extends StatelessWidget{
  final Map<String,dynamic> card;final VoidCallback? onOpen,onRemove;

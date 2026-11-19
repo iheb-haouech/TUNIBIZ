@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'dart:async';
+import 'package:flutter/services.dart';
+import 'session_vault.dart';
 import 'usage_analytics.dart';
 import 'package:flutter/material.dart';
 import 'api.dart';
@@ -26,15 +28,35 @@ class Tunibiz extends StatelessWidget{
  const Tunibiz({super.key});
  @override Widget build(BuildContext context)=>MaterialApp(title:'TUNIBIZ',debugShowCheckedModeBanner:false,theme:ThemeData(useMaterial3:true,colorScheme:ColorScheme.fromSeed(seedColor:blue),scaffoldBackgroundColor:const Color(0xFFF5F7FB),inputDecorationTheme:const InputDecorationTheme(border:OutlineInputBorder()),appBarTheme:const AppBarTheme(backgroundColor:navy,foregroundColor:Colors.white)),home:const Home());
 }
-class Home extends StatelessWidget{
+class Home extends StatefulWidget{
  const Home({super.key});
- void open(BuildContext context,int index){
-  if(index==0)return;
+ @override State<Home> createState()=>_HomeState();
+}
+class _HomeState extends State<Home>{
+ static const permissions=MethodChannel('tn.tunibiz/nearby');
+ bool opening=false;
+ @override void initState(){super.initState();WidgetsBinding.instance.addPostFrameCallback((_)=>startup());}
+ Future<void> startup()async{
+ if(!SessionVault.available||!baseUrl.startsWith('https://'))return;
+ try{
+ if(await permissions.invokeMethod<bool>('onboardingNeeded')==true&&mounted){
+ final allow=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Bienvenue sur TUNIBIZ'),content:const Text('Les notifications vous informent des avantages disponibles. La localisation approximative permet de découvrir les offres Nearby. Vous pouvez refuser et continuer à utiliser vos points et le scanner QR.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Plus tard')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Configurer'))]));
+ if(allow==true){await permissions.invokeMethod<bool>('permissionNotifications');if(mounted)await permissions.invokeMethod<bool>('permissionLocation');}
+ await permissions.invokeMethod('onboardingDone');
+ }
+ }catch(_){}
+ if(mounted&&!opening&&await SessionVault.read('wallet')!=null&&mounted&&ModalRoute.of(context)?.isCurrent==true)open(context,1);
+ }
+
+ void open(BuildContext context,int index,{bool scan=false}){
+  if(index==0||opening)return;opening=true;
   unawaited(Api.usage(index==1?'wallet_open':index==2?'nearby_open':'business_open'));
-  Navigator.push(context,MaterialPageRoute(builder:(_)=>index==2?const Nearby():index==3?const Workspace(merchant:true):ConsumerWallet(cardBuilder:(api,data)=>Workspace(merchant:false,sharedApi:api,initialData:data))));
+  Navigator.push(context,MaterialPageRoute(builder:(_)=>index==2?const Nearby():index==3?const Workspace(merchant:true):ConsumerWallet(scanOnOpen:scan,cardBuilder:(api,data)=>Workspace(merchant:false,sharedApi:api,initialData:data)))).whenComplete(()=>opening=false);
  }
  @override Widget build(BuildContext context)=>Scaffold(backgroundColor:paper,body:SafeArea(bottom:false,child:ListView(padding:EdgeInsets.zero,children:[
  PremiumHero(name:'Bienvenue.',shop:'Vos commerces. Vos avantages.',description:'Connectez votre carte pour suivre vos points et découvrir vos récompenses.',action:'Ma carte fidélité',points:0,goal:100,signedIn:false,onAction:()=>open(context,1)),
+ Padding(padding:const EdgeInsets.fromLTRB(20,14,20,0),child:FilledButton.icon(onPressed:()=>open(context,1,scan:true),icon:const Icon(Icons.qr_code_scanner),label:const Text('Scanner un QR commerçant'))),
+ Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:TextButton(onPressed:()async{try{await permissions.invokeMethod<bool>('permissionNotifications');await permissions.invokeMethod<bool>('permissionLocation');}catch(_){}},child:const Text('Autorisations Nearby et notifications'))),
  Padding(padding:const EdgeInsets.fromLTRB(20,26,20,6),child:Row(children:[const Expanded(child:Text('À découvrir',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:ink))),TextButton(onPressed:()=>open(context,2),child:const Text('Nearby'))])),
  Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:FeatureTile(asset:'assets/restaurant.webp',title:'De bonnes adresses, tout près',subtitle:'Explorez les offres actives dans les zones configurées.',tag:'NEARBY',onTap:()=>open(context,2))),
  const SizedBox(height:18),
