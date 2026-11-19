@@ -1,10 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'premium.dart';
+import 'business_offer.dart';
 String dt(num n)=>(n/1000).toStringAsFixed(3)+' DT';
 class BusinessDashboard extends StatefulWidget{
- final Map<String,dynamic> data;final VoidCallback? onQr,onCustomer,onCampaign,onNearby;
- const BusinessDashboard({super.key,required this.data,this.onQr,this.onCustomer,this.onCampaign,this.onNearby});
+ final Map<String,dynamic> data;final VoidCallback? onQr,onCustomer,onCampaign,onNearby,onApprovals,onAnnouncements;
+ const BusinessDashboard({super.key,required this.data,this.onQr,this.onCustomer,this.onCampaign,this.onNearby,this.onApprovals,this.onAnnouncements});
  @override State<BusinessDashboard> createState()=>_BusinessDashboardState();
 }
 class _BusinessDashboardState extends State<BusinessDashboard>{
@@ -15,13 +16,20 @@ class _BusinessDashboardState extends State<BusinessDashboard>{
  final sum=daily.fold<num>(0,(n,r)=>n+(r['amount'] as num)),count=daily.fold<num>(0,(n,r)=>n+(r['purchases'] as num));
  final buyers=(analytics['buyers'] as num?)??0,repeat=(analytics['repeat_buyers'] as num?)??0;
  final consent=(stats['customers'] as num)>0?((stats['consented'] as num)/(stats['customers'] as num)*100).round():0;
+ final announcements=((d['campaigns'] as List?)??[]).where((o)=>campaignStatus(o)=='Active').take(2).toList();
  final maxAmount=daily.fold<num>(0,(n,r)=>math.max(n,r['amount'] as num));
  return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
  Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(gradient:const LinearGradient(colors:[ink,Color(0xFF174158)]),borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
- const Text('TUNIBIZ BUSINESS',style:TextStyle(color:mint,letterSpacing:2,fontSize:11,fontWeight:FontWeight.w800)),const SizedBox(height:10),Text((analytics['shop'] as Map?)?['name']?.toString()??'Votre commerce',style:const TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w800)),const SizedBox(height:8),const Text('Pilotez votre relation client.',style:TextStyle(color:Colors.white70)),const SizedBox(height:20),Text(dt(stats['spent'] as num),style:const TextStyle(color:mint,fontSize:34,fontWeight:FontWeight.w800)),const Text('Achats fidélité enregistrés · cumul',style:TextStyle(color:Colors.white70,fontSize:12))
+ const Text('TUNIBIZ BUSINESS',style:TextStyle(color:mint,letterSpacing:2,fontSize:11,fontWeight:FontWeight.w800)),const SizedBox(height:10),Text((analytics['shop'] as Map?)?['name']?.toString()??'Votre commerce',style:const TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w800)),const SizedBox(height:8),Text((analytics['shop'] as Map?)?['city']?.toString()??'Pilotez votre relation client.',style:const TextStyle(color:Colors.white70)),const SizedBox(height:14),ClipRRect(borderRadius:BorderRadius.circular(14),child:OfferArtwork(offer:{'visual':(analytics['shop'] as Map?)?['category']??'general'},height:116)),const SizedBox(height:16),Text(dt(stats['spent'] as num),style:const TextStyle(color:mint,fontSize:34,fontWeight:FontWeight.w800)),const Text('Achats fidélité enregistrés · cumul',style:TextStyle(color:Colors.white70,fontSize:12))
  ])),const SizedBox(height:12),
  Row(children:[Expanded(child:metric('Clients inscrits',stats['customers'].toString(),Icons.people_outline)),const SizedBox(width:10),Expanded(child:metric('Points en circulation',stats['points'].toString(),Icons.stars_outlined))]),
  const SizedBox(height:10),Row(children:[Expanded(child:metric('Consentement marketing',consent.toString()+' %',Icons.verified_user_outlined)),const SizedBox(width:10),Expanded(child:metric('Acheteurs récurrents',buyers>0?(repeat/buyers*100).round().toString()+' %':'—',Icons.repeat))]),
+ const SizedBox(height:18),
+ Row(children:[Expanded(child:FilledButton.icon(onPressed:widget.onApprovals,icon:const Icon(Icons.qr_code),label:const Text('Valider QR'))),const SizedBox(width:8),Expanded(child:OutlinedButton.icon(onPressed:widget.onNearby,icon:const Icon(Icons.radar),label:const Text('Nearby')))]),
+ const SizedBox(height:18),
+ Row(children:[const Expanded(child:Text('Annonces',style:TextStyle(fontSize:23,fontWeight:FontWeight.w800,color:ink))),TextButton(onPressed:widget.onAnnouncements,child:const Text('Tout voir'))]),
+ if(announcements.isEmpty)FeatureTile(asset:'assets/restaurant.webp',title:'Créer votre première annonce',subtitle:'Choisissez un visuel et présentez votre offre.',tag:'MARKETING',onTap:widget.onCampaign??(){}),
+ for(final o in announcements)Padding(padding:const EdgeInsets.only(top:10),child:BusinessOfferTile(offer:o,merchant:true,onOpen:widget.onAnnouncements)),
  const SizedBox(height:18),
  Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
  const Text('Activité des achats',style:TextStyle(fontWeight:FontWeight.w800,fontSize:20,color:ink)),

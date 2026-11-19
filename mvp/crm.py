@@ -12,6 +12,8 @@ def install(app, db, payload, clean, merchant, err):
   CREATE TABLE IF NOT EXISTS campaigns(id INTEGER PRIMARY KEY,shop_id INTEGER NOT NULL REFERENCES shops(id),title TEXT NOT NULL,description TEXT NOT NULL,segment TEXT NOT NULL,starts TEXT NOT NULL,ends TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1);
   CREATE TABLE IF NOT EXISTS rewards(id INTEGER PRIMARY KEY,shop_id INTEGER NOT NULL REFERENCES shops(id),title TEXT NOT NULL,cost INTEGER NOT NULL CHECK(cost>0),active INTEGER NOT NULL DEFAULT 1);
   """)
+  campaign_cols={r['name'] for r in c.execute('PRAGMA table_info(campaigns)')}
+  if 'visual' not in campaign_cols:c.execute("ALTER TABLE campaigns ADD COLUMN visual TEXT NOT NULL DEFAULT 'general'")
   cols={r['name'] for r in c.execute('PRAGMA table_info(rewards)')}
   if 'visual' not in cols:c.execute("ALTER TABLE rewards ADD COLUMN visual TEXT NOT NULL DEFAULT 'general'")
   if 'description' not in cols:c.execute("ALTER TABLE rewards ADD COLUMN description TEXT NOT NULL DEFAULT ''")
@@ -81,12 +83,12 @@ def install(app, db, payload, clean, merchant, err):
   return jsonify(ok=True,points=amount//1000),201
  @app.post('/api/crm/campaign')
  def campaign():
-  sid=merchant();p=payload();title=clean(p.get('title'));desc=clean(p.get('description'),500);seg=p.get('segment');start=clean(p.get('starts'),10);end=clean(p.get('ends'),10)
+  sid=merchant();p=payload();title=clean(p.get('title'));desc=clean(p.get('description'),500);seg=p.get('segment');visual=p.get('visual','general');start=clean(p.get('starts'),10);end=clean(p.get('ends'),10)
   try:
    if date.fromisoformat(end)<date.fromisoformat(start):raise ValueError()
   except ValueError:return err('Dates invalides')
-  if not title or not desc or seg not in ('all','vip','inactive'):return err('Campagne invalide')
-  with db() as c:i=c.execute('INSERT INTO campaigns(shop_id,title,description,segment,starts,ends) VALUES(?,?,?,?,?,?)',(sid,title,desc,seg,start,end)).lastrowid
+  if not title or not desc or seg not in ('all','vip','inactive') or visual not in ('general','coffee','restaurant','bakery','drinks','shopping'):return err('Campagne invalide')
+  with db() as c:i=c.execute('INSERT INTO campaigns(shop_id,title,description,segment,starts,ends,visual) VALUES(?,?,?,?,?,?,?)',(sid,title,desc,seg,start,end,visual)).lastrowid
   return jsonify(id=i),201
  @app.post('/api/crm/campaign/stop')
  def stop():
@@ -139,7 +141,7 @@ def install(app, db, payload, clean, merchant, err):
    if not row:return err('Connectez votre carte',401)
    a=getcustomer(c,row['shop_id'],row['id']);today=date.today().isoformat()
    enabled=c.execute("SELECT 1 FROM subscriptions WHERE shop_id=? AND status='active' AND paid_until>date('now','+1 hour')",(row['shop_id'],)).fetchone()
-   cs=[{k:x[k] for k in ('id','title','description','ends')} for x in campaigns(c,row['shop_id']) if enabled and a['consent'] and x['active'] and x['starts']<=today<=x['ends'] and segment_ok(a,x['segment'])]
+   cs=[{k:x[k] for k in ('id','title','description','ends','visual')} for x in campaigns(c,row['shop_id']) if enabled and a['consent'] and x['active'] and x['starts']<=today<=x['ends'] and segment_ok(a,x['segment'])]
    rs=[{k:x[k] for k in ('id','title','cost','visual','description')} for x in rewards(c,row['shop_id']) if enabled and x['active']]
    shop=c.execute('SELECT name FROM shops WHERE id=?',(row['shop_id'],)).fetchone()['name']
    return jsonify(customer={k:a[k] for k in ('name','points','spent','purchases','consent')},shop=shop,campaigns=cs,rewards=rs,history=listrows(c,'SELECT kind,amount,points,label,created FROM loyalty_ledger WHERE customer_id=? ORDER BY id DESC LIMIT 100',(row['id'],)))

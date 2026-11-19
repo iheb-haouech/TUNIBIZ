@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'api.dart';
 import 'premium.dart';
+import 'business_offer.dart';
 
 const nearbyCategories={'all':'Tout','general':'Autres','coffee':'Cafés','restaurant':'Restaurants','bakery':'Pâtisseries','drinks':'Boissons','shopping':'Shopping','beauty':'Beauté'};
 const nearbyAssets={'coffee':'assets/cafe.webp','restaurant':'assets/restaurant.webp','bakery':'assets/croissant.webp','drinks':'assets/lemonade.webp','shopping':'assets/boutique.webp'};
@@ -64,7 +65,7 @@ class _NearbyState extends State<Nearby> with WidgetsBindingObserver{
  if(mounted&&enabled&&position!=null&&accepted==true){setState(()=>baseMap=true);unawaited(Api.usage('nearby_map_enabled'));}
  }
  void detail(Map<String,dynamic> o){unawaited(Api.usage('nearby_offer_view'));final asset=nearbyAssets[o['category']];showModalBottomSheet<void>(context:context,isScrollControlled:true,useSafeArea:true,showDragHandle:true,builder:(ctx)=>Padding(padding:const EdgeInsets.fromLTRB(22,0,22,24),child:SingleChildScrollView(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
- if(asset!=null)ClipRRect(borderRadius:BorderRadius.circular(18),child:Image.asset(asset,height:156,width:double.infinity,fit:BoxFit.cover)),
+ if(asset!=null)ClipRRect(borderRadius:BorderRadius.circular(18),child:OfferArtwork(offer:o,height:156)),
  if(asset!=null)const Text('Photo illustrative',style:TextStyle(fontSize:11,color:muted)),
  const SizedBox(height:10),Text(o['title'].toString(),style:const TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:ink)),
  Text(o['shop'].toString(),style:const TextStyle(fontWeight:FontWeight.bold)),Text((o['distance'] as double).round().toString()+' m à vol d’oiseau · '+(nearbyCategories[o['category']]??'Autres')),
@@ -103,7 +104,7 @@ class _NearbyState extends State<Nearby> with WidgetsBindingObserver{
  Text(status,style:const TextStyle(color:muted)),if(accuracy!=null)Text('Précision approximative : '+accuracy!.round().toString()+' m. Distances indicatives.',style:const TextStyle(color:muted,fontSize:12)),
  const SizedBox(height:12),SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:[for(final e in nearbyCategories.entries)Padding(padding:const EdgeInsets.only(right:7),child:FilterChip(label:Text(e.value),selected:category==e.key,onSelected:(_)=>setState(()=>category=e.key)))])),
  if(position!=null)...[const SizedBox(height:10),mapPanel(position!),const SizedBox(height:15),Text(filtered.length.toString()+' offre(s) dans cette catégorie',style:const TextStyle(fontSize:18,fontWeight:FontWeight.w800,color:ink)),if(filtered.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:12),child:Text('Aucune offre correspondante.'))],
- for(final o in filtered)Padding(padding:const EdgeInsets.only(top:12),child:Material(color:Colors.white,borderRadius:BorderRadius.circular(18),clipBehavior:Clip.antiAlias,child:InkWell(onTap:()=>detail(o),child:Row(children:[Container(width:88,height:100,color:ink,child:nearbyAssets[o['category']]!=null?Image.asset(nearbyAssets[o['category']]!,fit:BoxFit.cover):Icon(categoryIcon(o['category']?.toString()??'general'),color:mint,size:30)),Expanded(child:Padding(padding:const EdgeInsets.all(13),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((o['distance'] as double).round().toString()+' m · '+(nearbyCategories[o['category']]??'Autres'),style:const TextStyle(color:Color(0xFF087F78),fontSize:11,fontWeight:FontWeight.bold)),Text(o['title'].toString(),style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800)),Text(o['shop'].toString(),style:const TextStyle(fontSize:12,color:muted))]))),const Padding(padding:EdgeInsets.only(right:10),child:Icon(Icons.chevron_right))])))),
+ for(final o in filtered)Padding(padding:const EdgeInsets.only(top:12),child:BusinessOfferTile(offer:o,subtitle:(o['distance'] as double).round().toString()+' m · '+o['shop'].toString(),onOpen:()=>detail(o))),
  const SizedBox(height:12),SwitchListTile(title:const Text('Alertes de proximité'),subtitle:const Text('Découverte active uniquement · 3 maximum par jour'),value:alerts,onChanged:toggleAlerts),
  const Text('Votre position ne transite pas par le serveur TUNIBIZ. Le fond de rues externe est facultatif.',style:TextStyle(color:muted,fontSize:12))
  ]));

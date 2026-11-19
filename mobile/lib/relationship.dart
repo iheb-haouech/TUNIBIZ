@@ -10,6 +10,8 @@ import 'loyalty_qr.dart';
 import 'reward_tile.dart';
 import 'wallet.dart';
 import 'business_dashboard.dart';
+import 'business_offer.dart';
+import 'business_nearby.dart';
 import 'checkout_scanner.dart';
 import 'store_scan.dart';
 import 'update_center.dart';
@@ -84,48 +86,49 @@ class _WorkspaceState extends State<Workspace>{
  Future<void> campaign()async{
  final now=DateTime.now().toIso8601String().substring(0,10);
  final p=await fields('Nouvelle campagne',{'title':'Titre','description':'Offre et conditions','starts':'Début AAAA-MM-JJ','ends':'Fin AAAA-MM-JJ'},initial:{'starts':now,'ends':now});if(p==null||!mounted)return;
- final seg=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Audience consentante'),children:[for(final e in {'all':'Tous','vip':'VIP (100 DT et plus)','inactive':'Inactifs > 30 jours'}.entries)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,e.key),child:Text(e.value))]));if(seg==null)return;await run(()async{await api.call('/crm/campaign',{...p,'segment':seg});await refresh();});
+ final seg=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Audience consentante'),children:[for(final e in {'all':'Tous','vip':'VIP (100 DT et plus)','inactive':'Inactifs > 30 jours'}.entries)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,e.key),child:Text(e.value))]));if(seg==null||!mounted)return;final visual=await chooseOfferVisual(context);if(visual==null)return;await run(()async{await api.call('/crm/campaign',{...p,'segment':seg,'visual':visual});await refresh();});
  }
  Future<void> newReward()async{
  final p=await fields('Nouvelle récompense',{'title':'Avantage / réduction','cost':'Points requis','description':'Conditions (facultatives)'},optional:['description']);if(p==null||!mounted)return;
  final visual=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Choisir un visuel illustratif'),children:[for(final e in rewardVisuals.entries)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,e.key),child:Text(e.value))]));if(visual==null)return;
  await run(()async{await api.call('/crm/reward',{'title':p['title'],'cost':int.tryParse(p['cost']!)??0,'description':p['description'],'visual':visual});await refresh();});
  }
- Future<void> manageNearby()async{
- Map<String,dynamic>? result;
- await run(()async{result=await api.call('/nearby/business');});if(!mounted||result==null)return;
- final d=result!,loc=(d['location'] as Map?)??{};
- final action=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Nearby Business'),children:[
- SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'location'),child:const Text('Configurer mon établissement')),
- SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'offer'),child:const Text('Créer une promotion')),
- for(final o in d['offers'])if(o['active']==1)SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'stop:'+o['id'].toString()),child:Text('Arrêter : '+o['title'].toString()))
- ]));if(!mounted||action==null)return;
- if(action=='location'){final p=await fields('Localisation fixe',{'address':'Adresse publique','lat':'Latitude','lon':'Longitude'},initial:{for(final k in ['address','lat','lon'])k:loc[k]?.toString()??''});if(p!=null)await run(()async{await api.call('/nearby/location',p);await refresh();});}
- else if(action=='offer'){final day=DateTime.now().toIso8601String().substring(0,10);final p=await fields('Nouvelle promotion',{'title':'Titre','description':'Conditions','starts':'Début AAAA-MM-JJ','ends':'Fin AAAA-MM-JJ'},initial:{'starts':day,'ends':day});if(p==null||!mounted)return;
- final cat=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('Catégorie'),children:[for(final e in nearbyCategories.entries)if(e.key!='all')SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,e.key),child:Text(e.value))]));if(cat!=null)await run(()async{await api.call('/nearby/offer',{...p,'category':cat});await refresh();});}
- else if(action.startsWith('stop:')){final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Arrêter cette promotion ?'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Arrêter'))]));if(ok==true)await run(()async{await api.call('/nearby/stop',{'id':int.parse(action.substring(5))});await refresh();});}
+ Future<void> nearbyLocation()async{
+ Map<String,dynamic>? result;await run(()async{result=await api.call('/nearby/business');});if(!mounted||result==null)return;
+ final loc=(result!['location'] as Map?)??{};
+ final p=await fields('Localisation fixe',{'address':'Adresse publique','lat':'Latitude','lon':'Longitude'},initial:{for(final k in ['address','lat','lon'])k:loc[k]?.toString()??''});
+ if(p!=null)await run(()async{await api.call('/nearby/location',p);await refresh();});
+ }
+ Future<void> nearbyCreate()async{
+ final day=DateTime.now().toIso8601String().substring(0,10);final p=await fields('Nouvelle promotion',{'title':'Titre','description':'Conditions','starts':'Début AAAA-MM-JJ','ends':'Fin AAAA-MM-JJ'},initial:{'starts':day,'ends':day});if(p==null||!mounted)return;
+ final cat=await chooseOfferVisual(context,nearby:true);if(cat!=null)await run(()async{await api.call('/nearby/offer',{...p,'category':cat});await refresh();});
+ }
+ Future<void> nearbyStop(int id)async{
+ final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Arrêter cette promotion ?'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Arrêter'))]));
+ if(ok==true)await run(()async{await api.call('/nearby/stop',{'id':id});await refresh();});
  }
  Widget panel(Widget child)=>Card(child:Padding(padding:const EdgeInsets.all(16),child:child));
  Widget metric(String label,String value)=>panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(label),Text(value,style:const TextStyle(fontSize:25,fontWeight:FontWeight.bold))]));
  List<Widget> merchantView(Map<String,dynamic> d)=>[
- if(tab==0||tab==1)FilledButton.icon(onPressed:busy?null:()async{await Navigator.push(context,MaterialPageRoute(builder:(_)=>StoreApprovals(api:api)));if(mounted)await run(refresh);},icon:const Icon(Icons.qr_code),label:const Text('QR du commerce & validations')),
- if(tab==0)BusinessDashboard(data:d,onQr:busy?null:identifyQr,onCustomer:busy?null:addCustomer,onCampaign:busy?null:campaign,onNearby:busy?null:()=>setState(()=>tab=4)),
+ if(tab==1)FilledButton.icon(onPressed:busy?null:()async{await Navigator.push(context,MaterialPageRoute(builder:(_)=>StoreApprovals(api:api)));if(mounted)await run(refresh);},icon:const Icon(Icons.qr_code),label:const Text('QR du commerce & validations')),
+ if(tab==0)BusinessDashboard(data:d,onQr:busy?null:identifyQr,onCustomer:busy?null:addCustomer,onCampaign:busy?null:campaign,onNearby:busy?null:()=>setState(()=>tab=4),onApprovals:busy?null:()async{await Navigator.push(context,MaterialPageRoute(builder:(_)=>StoreApprovals(api:api)));if(mounted)await run(refresh);},onAnnouncements:()=>setState(()=>tab=2)),
  if(tab==1)const Text('Mes clients',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:ink)),
  if(tab==1)...[
  FilledButton.icon(onPressed:busy?null:identifyQr,icon:const Icon(Icons.qr_code_scanner),label:const Text('Identifier une carte QR')),
  FilledButton.icon(onPressed:busy?null:addCustomer,icon:const Icon(Icons.person_add),label:const Text('Nouveau client')),
  for(final c in d['customers']) panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(c['name'],style:const TextStyle(fontSize:18,fontWeight:FontWeight.bold)),Text(c['points'].toString()+' points · '+money(c['spent'])),Text(c['consent']==1?'Offres acceptées':'Offres désactivées'),Wrap(spacing:5,children:[TextButton(onPressed:busy?null:()=>purchase(c['id']),child:const Text('Achat')),TextButton(onPressed:busy?null:()=>redeem(c['id']),child:const Text('Récompense')),TextButton(onPressed:busy?null:()=>customerHistory(c['id']),child:const Text('Historique'))])]))
  ]else if(tab==2)...[
- FilledButton(onPressed:busy?null:campaign,child:const Text('Créer une campagne')),
- const Text('Publication dans les cartes des clients consentants.'),
- for(final c in d['campaigns'])panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(c['title'],style:const TextStyle(fontWeight:FontWeight.bold)),Text(c['description']),Text(c['starts']+' au '+c['ends']),Text(c['audience'].toString()+' clients éligibles'),if(c['active']==1)TextButton(onPressed:busy?null:()=>run(()async{await api.call('/crm/campaign/stop',{'id':c['id']});await refresh();}),child:const Text('Arrêter'))]))
+ const Text('Annonces & campagnes',style:TextStyle(fontSize:27,fontWeight:FontWeight.w800,color:ink)),
+ const Text('Communiquez avec vos clients consentants.',style:TextStyle(color:muted)),
+ const SizedBox(height:12),
+ FilledButton.icon(onPressed:busy?null:campaign,icon:const Icon(Icons.add_photo_alternate_outlined),label:const Text('Créer une annonce')),
+ if((d['campaigns'] as List).isEmpty)const Padding(padding:EdgeInsets.all(16),child:Text('Aucune annonce publiée.')),
+ for(final c in d['campaigns'])Padding(padding:const EdgeInsets.only(top:12),child:BusinessOfferTile(offer:c,merchant:true,subtitle:c['audience'].toString()+' clients éligibles',onStop:busy?null:()=>run(()async{await api.call('/crm/campaign/stop',{'id':c['id']});await refresh();}))),
  ]else if(tab==3)...[
  FilledButton(onPressed:busy?null:newReward,child:const Text('Ajouter une récompense')),
- for(final r in d['rewards'])panel(ListTile(title:Text(r['title']),trailing:Text(r['cost'].toString()+' pts')))
+ for(final r in d['rewards'])Padding(padding:const EdgeInsets.only(top:12),child:BusinessOfferTile(offer:r,merchant:true,subtitle:r['cost'].toString()+' points requis'))
  ]else if(tab==4)...[
- const Text('Nearby Business',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:ink)),
- FilledButton.icon(onPressed:busy?null:manageNearby,icon:const Icon(Icons.radar),label:const Text('Gérer les promotions et la localisation')),
- const Text('Rayons configurés · aucune position individuelle des visiteurs.')
+ BusinessNearby(api:api,onCreate:nearbyCreate,onLocation:nearbyLocation,onStop:nearbyStop),
  ]];
  List<Widget> cardView(Map<String,dynamic> d){final c=d['customer'];final points=(c['points'] as num).toInt();final rewards=(d['rewards'] as List).toList()..sort((a,b)=>(a['cost'] as num).compareTo(b['cost'] as num));final next=rewards.where((r)=>(r['cost'] as num)>points).toList();
  final goal=next.isNotEmpty?(next.first['cost'] as num).toInt():rewards.isNotEmpty?(rewards.last['cost'] as num).toInt():100;
@@ -139,7 +142,7 @@ class _WorkspaceState extends State<Workspace>{
  for(final r in rewards)Padding(padding:const EdgeInsets.fromLTRB(20,0,20,16),child:RewardTile(key:ValueKey(r['id']),reward:Map<String,dynamic>.from(r),points:points)),
  const Padding(padding:EdgeInsets.fromLTRB(20,18,20,12),child:Text('Offres pour vous',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:ink))),
  if((d['campaigns'] as List).isEmpty)const Padding(padding:EdgeInsets.symmetric(horizontal:20),child:Text('Aucune offre disponible.')),
- for(final r in d['campaigns'])Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:panel(ListTile(leading:const Icon(Icons.local_offer_outlined,color:cobalt),title:Text(r['title'],style:const TextStyle(fontWeight:FontWeight.bold)),subtitle:Text(r['description']+'\nJusqu’au '+r['ends'])))),
+ for(final r in d['campaigns'])Padding(padding:const EdgeInsets.fromLTRB(20,0,20,12),child:BusinessOfferTile(offer:r)),
  Padding(padding:const EdgeInsets.all(20),child:FeatureTile(asset:'assets/restaurant.webp',title:'Explorez les offres proches',subtitle:'Découverte volontaire · Rayons configurés',tag:'NEARBY',onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const Nearby())))),
  Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:Text(money(c['spent'])+' d’achats enregistrés',style:const TextStyle(color:muted))),
  if(c['consent']==1)TextButton(onPressed:busy?null:()=>run(()async{await api.call('/loyalty/optout',{});await refresh();}),child:const Text('Ne plus recevoir les offres')),
