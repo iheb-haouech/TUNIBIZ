@@ -3,6 +3,7 @@ import base64,json,os
 from email.message import EmailMessage
 from email.utils import formataddr
 from pathlib import Path
+from email_templates import layout,LOGO_CID
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request,AuthorizedSession
 SCOPE='https://www.googleapis.com/auth/gmail.send'
@@ -26,7 +27,7 @@ def settings():
 def ready():
  return settings() is not None
 
-def send(email,subject,body):
+def send(email,subject,body,html_body=None):
  cfg=settings()
  if cfg is None:raise RuntimeError('Gmail delivery not configured')
  path,sender=cfg
@@ -35,6 +36,9 @@ def send(email,subject,body):
  message['To']=email
  message['Subject']=subject
  message.set_content(body)
+ message.add_alternative(html_body if html_body is not None else layout(subject,body),subtype='html')
+ logo=(Path(__file__).resolve().parent/'static'/'icon-192.png').read_bytes()
+ message.get_payload()[-1].add_related(logo,maintype='image',subtype='png',cid='<'+LOGO_CID+'>',disposition='inline',filename='tunibiz-logo.png')
  raw=base64.urlsafe_b64encode(message.as_bytes()).decode('ascii')
  try:
   creds=Credentials.from_authorized_user_file(str(path),scopes=[SCOPE])

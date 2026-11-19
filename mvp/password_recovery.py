@@ -1,6 +1,7 @@
 """Password recovery via configured HTTPS transactional email provider."""
 import os,re,secrets,hashlib,time
 import gmail_delivery
+import email_templates
 from flask import request,jsonify,send_from_directory,session
 from werkzeug.security import generate_password_hash
 ORIGIN='https://ihebhaouech.pythonanywhere.com'
@@ -8,7 +9,7 @@ GENERIC='Si un compte correspondant existe, un lien de réinitialisation sera en
 def digest(s):return hashlib.sha256(s.encode()).hexdigest()
 def ready():return gmail_delivery.ready()
 def send_link(email,token):
- gmail_delivery.send(email,'Reinitialisation de votre mot de passe TUNIBIZ','Votre lien a usage unique (valable 20 minutes) : '+ORIGIN+'/reset-password#'+token+'\nSi vous n’avez rien demande, ignorez ce message.')
+ gmail_delivery.send(email,*email_templates.password_reset(token))
 
 def install(app,db,payload,err,throttle):
  with db() as c:

@@ -3,6 +3,7 @@ import hashlib,hmac,os,re,secrets,time
 from flask import request,session,jsonify,send_from_directory
 import password_recovery
 import gmail_delivery
+import email_templates
 
 def required(production=False):
  return os.getenv('TUNIBIZ_REQUIRE_EMAIL_VERIFICATION','1' if production else '0')=='1'
@@ -11,7 +12,7 @@ def welcome_identity(email,secret):
  return hmac.new(secret.encode(),('welcome:'+email.strip().lower()).encode(),hashlib.sha256).hexdigest()
 
 def send_confirmation(email,token):
- gmail_delivery.send(email,'Confirmez votre adresse email TUNIBIZ','Confirmez votre adresse (lien a usage unique valable 20 minutes) : '+password_recovery.ORIGIN+'/verify-email#'+token)
+ gmail_delivery.send(email,*email_templates.verification(token))
 
 def install(app,db,payload,err,throttle,production):
  with db() as c:
