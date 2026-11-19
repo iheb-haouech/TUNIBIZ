@@ -1,0 +1,48 @@
+{
+  "checked_at_utc": "2026-11-19T14:22:49.185158+00:00",
+  "backend": {
+    "passed": 15,
+    "total": 15,
+    "scripts": [
+      "test_admin_pilot.py",
+      "test_analytics.py",
+      "test_app_release.py",
+      "test_archive_shop.py",
+      "test_business_visuals.py",
+      "test_loyalty_qr.py",
+      "test_merchant_types_qr.py",
+      "test_pilot_p0.py",
+      "test_pilot_security.py",
+      "test_production.py",
+      "test_session_persistence.py",
+      "test_store_scan.py",
+      "test_storefront.py",
+      "test_storefront_pilot.py",
+      "test_subscriptions_google.py"
+    ],
+    "coupon_repeat_claim_counts_once": true
+  },
+  "flutter": {
+    "passed": 26,
+    "total": 26
+  },
+  "responsive": {
+    "views": 20,
+    "widths": [
+      390,
+      1440
+    ],
+    "password_toggle_and_admin_filters": true
+  },
+  "analytics_browser": {
+    "passed": true,
+    "consent_before_google": true,
+    "single_page_view": true,
+    "withdrawal_preserves_session": true
+  },
+  "native_apk_verified": true,
+  "advertising_permissions_absent": true,
+  "physical_android_tested": false,
+  "production_deployed": false,
+  "apk_published": false
+}

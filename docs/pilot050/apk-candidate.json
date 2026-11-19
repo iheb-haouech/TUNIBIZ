@@ -1,0 +1,28 @@
+{
+    "version_name":  "0.5.0",
+    "version_code":  7,
+    "package":  "tn.tunibiz.tunibiz_mobile",
+    "file_name":  "TUNIBIZ-v0.5.0-pilot-candidate.apk",
+    "bytes":  36572014,
+    "sha256":  "163cc645ed96f6c24c1bcb1130b7bc5a8b99429132076cf08379d88cdb8473e5",
+    "certificate_sha256":  "2c1b7971401f1aa3d72f9e4e15b25c7218f4f5f5409a0a14681dfc7a02bc876d",
+    "signature_verified":  true,
+    "advertising_permissions_absent":  true,
+    "firebase_app_id":  "1:900545281118:android:9612375c25e1ace973c8cf",
+    "firebase_app_id_present_in_apk":  true,
+    "analytics_defaults_disabled":  [
+                                        "firebase_analytics_collection_enabled",
+                                        "google_analytics_default_allow_analytics_storage",
+                                        "google_analytics_default_allow_ad_storage",
+                                        "google_analytics_default_allow_ad_user_data",
+                                        "google_analytics_default_allow_ad_personalization_signals",
+                                        "google_analytics_adid_collection_enabled"
+                                    ],
+    "dart_abis":  [
+                      "arm64-v8a"
+                  ],
+    "flutter_tests_passed":  26,
+    "physical_device_tested":  false,
+    "published":  false,
+    "production_deployed":  false
+}

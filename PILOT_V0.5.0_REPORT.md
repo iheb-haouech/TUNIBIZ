@@ -58,12 +58,12 @@ Les anciens tests qui portent sur d'autres modules désactivent explicitement la
 
 1. **P0 — Validation physique absente.** Installer le candidat signé sur le téléphone pilote ; vérifier mise à jour depuis une version à même certificat, session après fermeture/réouverture, caméra QR réelle, refus des permissions, mode hors connexion et reprise réseau.
 2. **P1 — Envoi email non configuré en production.** Configurer côté serveur `TUNIBIZ_BREVO_KEY` et `TUNIBIZ_EMAIL_FROM` (expéditeur vérifié), puis tester un vrai envoi depuis PythonAnywhere. Ne pas coller ces secrets dans un chat ou GitHub. Avec la vérification exigée, les nouveaux consommateurs email ne peuvent pas rejoindre un commerce tant que cet envoi n'est pas opérationnel.
-3. **P1 — Google réel non configuré.** Projet Firebase `tunibiz-782f0`, package `tn.tunibiz.tunibiz_mobile`, certificats permanents SHA-1/SHA-256 ; client OAuth Web et client Android. Serveur : `TUNIBIZ_GOOGLE_CLIENT_ID`, `TUNIBIZ_GOOGLE_CLIENT_SECRET`, `TUNIBIZ_GOOGLE_REDIRECT_URI=https://ihebhaouech.pythonanywhere.com/auth/google/callback`. Tester la connexion réelle et les comptes email existants.
+3. **P1 — Google Sign-In réel non configuré.** Projet Firebase `tunibiz-782f0`, package `tn.tunibiz.tunibiz_mobile`, certificats permanents SHA-1/SHA-256 ; client OAuth Web et client Android. Serveur : `TUNIBIZ_GOOGLE_CLIENT_ID`, `TUNIBIZ_GOOGLE_CLIENT_SECRET`, `TUNIBIZ_GOOGLE_REDIRECT_URI=https://ihebhaouech.pythonanywhere.com/auth/google/callback`. Tester la connexion réelle et les comptes email existants.
 4. **P1 — Notifications FCM non développées/testées.** L'application ne contient pas encore de client Firebase Messaging ni de distribution push serveur. Ne pas annoncer de réception lorsque l'application est fermée.
 5. **P1 — Production non validée après migration.** Vérifier versions Python et packages Linux, espace/disponibilité PythonAnywhere, sauvegarde réelle puis restauration isolée, gestion du secret et des fichiers privés ; effectuer un essai à deux commerces de test et charge simultanée adaptée au pilote.
 6. **P1 — Informations commerciales et confidentialité.** Renseigner le responsable du traitement, contact d'assistance, durées finales et conditions d'utilisation ; la page confidentialité reste un document pilote à valider.
 7. **P2 — Multilingue incomplet.** La traduction intégrale FR/EN/AR et l'accessibilité complète ne sont pas validées. Toutes les vues n'ont pas été refondues dans cette livraison.
-8. **P2 — Analytics externe.** La collecte locale facultative existe ; GA4 Web/Firebase Android DebugView, retrait du consentement sur appareil et configuration du projet réel restent à tester.
+8. **P1 — Validation Analytics réelle à terminer.** GTM/GA4 et Firebase Android sont configurés dans le candidat. Le test Web local avec les véritables SDK Google reçoit HTTP 204, sans doublon de page_view ni valeur personnelle fictive observée. Les réglages de collecte automatique dans la propriété Google, la réception console/DebugView et le retrait sur téléphone restent à contrôler. Voir [la fiche de configuration et de tests](TRACKING_V0.5.0.md).
 9. **P2 — Capacité et abus.** Les limites par IP et SQLite conviennent à une première validation, sans preuve de capacité à grande échelle. Une protection distribuée et une politique anti-multicomptes plus forte restent nécessaires si le volume augmente.
 
 ## Préparation Makhzen Djerbi et Z Drugstore
@@ -129,12 +129,38 @@ Le NDK requis par Flutter est 28.2.13676358 (r28c). Sa réparation conserve l'in
 | [5b0860d](https://github.com/iheb-haouech/TUNIBIZ/commit/5b0860d) | Navigation persistante et résilience Android |
 | [15033ac](https://github.com/iheb-haouech/TUNIBIZ/commit/15033ac) | Indicateurs métier réels et dates de Tunis |
 
+| [621f840](https://github.com/iheb-haouech/TUNIBIZ/commit/621f840) | GA4/GTM avec consentement, Firebase Android, vérification du binaire |
+
+## Google Analytics et Tag Manager
+
+- GTM `GTM-N7B5938K`, destination GA4 `G-HP8K9C7WD5`, chargement seulement après accord ; publicité refusée, URL sans paramètres ni fragment, chemins sensibles exclus.
+- Test navigateur sur copie isolée avec les véritables SDK Google : deux réponses HTTP 204, événements `page_view`, `tn_wallet_view`, `tn_wallet_open`, une seule page_view. Aucun email, token fictif ou hash de cet email observé. Ce résultat ne prouve pas une réception dans la console ou un déploiement en production.
+- Firebase Android : ressources du projet existant intégrées au candidat ; six paramètres de collecte/consentement vérifiés désactivés dans le manifeste compilé. Choix Analytics conservé dans le coffre Android.
+- [Configuration détaillée et contrôles Google restant à effectuer](TRACKING_V0.5.0.md) ; [preuve de transport](docs/pilot050/google-live-test.json).
+
 ## Bilan Android
 
 - Analyse Flutter : aucune erreur ni avertissement bloquant ; 27 informations de migration du SDK, principalement les imports Material dépréciés.
-- Tests Flutter : 25/25 réussis après les dernières modifications, y compris affichages à 320 px et erreurs réseau.
+- Tests Flutter : 26/26 réussis après les dernières modifications, y compris affichages à 320 px et erreurs réseau.
 - NDK 28.2.13676358 : réinstallé depuis l'archive officielle après contrôle d'intégrité. L'ancien dossier incomplet est conservé sur SPYKY.
 - Android Build-Tools 36 : installation automatique par Gradle achevée.
 
 <!-- BUILD_RESULT -->
-La compilation native et la vérification du candidat APK sont en cours. Aucun APK V0.5.0 n'est à considérer comme livré ou validé sur téléphone à ce stade.
+Compilation native réussie. Candidat conservé sur SPYKY : `E:\TUNIBIZ-Dev\TUNIBIZ-v0.5.0-pilot-candidate.apk`. Il n'est ni publié ni installé sur téléphone.
+
+| Contrôle du binaire | Résultat |
+|---|---|
+| Package / version | `tn.tunibiz.tunibiz_mobile` / 0.5.0, code 7 |
+| Taille | 36572014 octets |
+| Signature | Vérifiée par apksigner, schéma v2, certificat permanent attendu |
+| Firebase | google_app_id du projet existant trouvé dans les ressources de l'APK |
+| Collecte par défaut | Six métadonnées Analytics/publicité vérifiées à false |
+| Permissions publicitaires | AD_ID, AdServices AD_ID et Attribution absentes du manifeste compilé |
+| Code Dart natif | arm64-v8a ; aucun support Dart 32 bits ou x86 annoncé |
+| Téléphone et mise à jour | Non testés ; aucun appareil ADB connecté |
+
+SHA-256 du candidat : `163cc645ed96f6c24c1bcb1130b7bc5a8b99429132076cf08379d88cdb8473e5`.
+
+[Preuve structurée du candidat](docs/pilot050/apk-candidate.json) et [dernière validation locale](docs/pilot050/final-validation.json). Le script `verify-pilot.ps1` reproduit les contrôles du binaire sans installer ni publier l'application.
+
+L'installation NDK complète a été déplacée vers `E:\TUNIBIZ-Dev\android-tools\ndk\28.2.13676358`, avec une jonction au chemin SDK initial pour libérer le disque C:. CMake 3.22.1 a ensuite été installé avec succès. La version Windows des SDK ne valide pas l'environnement PythonAnywhere.

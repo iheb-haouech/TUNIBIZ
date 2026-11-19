@@ -9,8 +9,9 @@ Cette procédure nécessite la validation explicite du propriétaire après les 
 3. Sur PythonAnywhere, vérifier Python 3.11 minimum, environnement virtuel, WSGI, données persistantes et quota. Les paquets Windows du poste ne prouvent pas une installation Linux réussie.
 4. Préparer un environnement virtuel neuf à partir de `mvp/requirements.lock`. Conserver l'ancien environnement. Le verrou contient les versions testées ; vérifier leur installation sur PythonAnywhere avant bascule.
 5. Configurer dans les fichiers privés serveur les variables requises ; ne pas afficher leurs valeurs. Conserver le secret Flask existant. Utiliser `python mvp/pilot_preflight.py` : il n'affiche que des états de présence, versions, intégrité et espace libre. Il n'envoie pas d'emails.
-6. Noter les chemins du code, du venv et du fichier WSGI actuels, ainsi que le SHA déployé. Mettre une copie privée du WSGI à l'abri.
-7. Vérifier que les accès Google et SMTP HTTPS nécessaires sont autorisés par le plan PythonAnywhere. Un indicateur configuré n'est pas un test réel de livraison.
+6. Lire `TRACKING_V0.5.0.md` ; vérifier la destination Web et désactiver les capacités automatiques de données utilisateur, de formulaires et la personnalisation publicitaire dans la propriété Google. Les variables de suivi sont publiques ; ne pas les confondre avec les secrets OAuth.
+7. Noter les chemins du code, du venv et du fichier WSGI actuels, ainsi que le SHA déployé. Mettre une copie privée du WSGI à l'abri.
+8. Vérifier que les accès Google et SMTP HTTPS nécessaires sont autorisés par le plan PythonAnywhere. Un indicateur configuré n'est pas un test réel de livraison.
 
 ## Fenêtre unique après approbation
 
@@ -36,4 +37,4 @@ Cette procédure nécessite la validation explicite du propriétaire après les 
 
 Renseigner dans Firebase `tunibiz-782f0` l'application `tn.tunibiz.tunibiz_mobile` et les SHA-1/SHA-256 du certificat release permanent affichés par la vérification locale. Ne jamais partager le keystore ni son mot de passe. Ajouter le client OAuth Android correspondant et le client Web utilisé par le serveur. URI de redirection Web : `https://ihebhaouech.pythonanywhere.com/auth/google/callback`.
 
-Les valeurs Firebase publiques SDK peuvent être passées au build après validation. Aucun secret de compte de service ne doit être inclus dans l'APK. La configuration FCM et ses tests restent à développer : cette procédure ne les active pas.
+Le candidat signé intègre déjà les ressources Firebase du projet existant. Le fichier google-services.json reste hors Git. Lire TRACKING_V0.5.0.md pour les identifiants GA4/GTM, les réglages Google et les tests de consentement à effectuer après la bascule. Aucun secret de compte de service ne doit être inclus dans l'APK. La configuration FCM et ses tests restent à développer : cette procédure ne les active pas.
