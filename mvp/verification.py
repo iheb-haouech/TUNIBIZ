@@ -2,6 +2,7 @@
 import hashlib,hmac,os,re,secrets,time
 from flask import request,session,jsonify,send_from_directory
 import password_recovery
+import gmail_delivery
 
 def required(production=False):
  return os.getenv('TUNIBIZ_REQUIRE_EMAIL_VERIFICATION','1' if production else '0')=='1'
@@ -10,12 +11,7 @@ def welcome_identity(email,secret):
  return hmac.new(secret.encode(),('welcome:'+email.strip().lower()).encode(),hashlib.sha256).hexdigest()
 
 def send_confirmation(email,token):
- import requests
- r=requests.post('https://api.brevo.com/v3/smtp/email',headers={'api-key':os.environ['TUNIBIZ_BREVO_KEY']},
-  json={'sender':{'name':'TUNIBIZ','email':os.environ['TUNIBIZ_EMAIL_FROM']},'to':[{'email':email}],
-   'subject':'Confirmez votre adresse email TUNIBIZ',
-   'textContent':'Confirmez votre adresse (lien à usage unique valable 20 minutes) : '+password_recovery.ORIGIN+'/verify-email#'+token},timeout=8)
- r.raise_for_status()
+ gmail_delivery.send(email,'Confirmez votre adresse email TUNIBIZ','Confirmez votre adresse (lien a usage unique valable 20 minutes) : '+password_recovery.ORIGIN+'/verify-email#'+token)
 
 def install(app,db,payload,err,throttle,production):
  with db() as c:

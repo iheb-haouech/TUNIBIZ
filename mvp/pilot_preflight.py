@@ -9,7 +9,8 @@ def checks():
  out['absolute_data_dir']=bool(raw) and data.is_absolute()
  out['admin_configured']=bool(os.getenv('TUNIBIZ_ADMIN_PASSWORD_HASH'))
  out['email_verification_required']=os.getenv('TUNIBIZ_REQUIRE_EMAIL_VERIFICATION','1')=='1'
- out['email_delivery_configured']=bool(os.getenv('TUNIBIZ_BREVO_KEY') and os.getenv('TUNIBIZ_EMAIL_FROM'))
+ from gmail_delivery import ready as email_ready
+ out['email_delivery_configured']=email_ready()
  out['google_configured']=all(os.getenv(k) for k in ('TUNIBIZ_GOOGLE_CLIENT_ID','TUNIBIZ_GOOGLE_CLIENT_SECRET','TUNIBIZ_GOOGLE_REDIRECT_URI'))
  from analytics import tracking_config
  tracking=tracking_config()
