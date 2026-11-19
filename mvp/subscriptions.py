@@ -12,6 +12,7 @@ def install(app,db,payload,clean,err,throttle,production):
   """)
   c.execute("INSERT OR IGNORE INTO subscriptions(shop_id,status,paid_until) SELECT id,CASE WHEN slug='demo' AND ?=0 THEN 'active' ELSE 'pending' END,CASE WHEN slug='demo' AND ?=0 THEN '2099-12-31' ELSE '' END FROM shops",(int(production),int(production)))
   if 'category_detail' not in {r['name'] for r in c.execute('PRAGMA table_info(subscriptions)')}:c.execute("ALTER TABLE subscriptions ADD COLUMN category_detail TEXT NOT NULL DEFAULT ''")
+  if 'archived_at' not in {r['name'] for r in c.execute('PRAGMA table_info(subscriptions)')}:c.execute('ALTER TABLE subscriptions ADD COLUMN archived_at TEXT')
   cols={r['name'] for r in c.execute('PRAGMA table_info(nearby_offers)')}
   if 'radius_override' not in cols:c.execute('ALTER TABLE nearby_offers ADD COLUMN radius_override INTEGER')
   if 'location_confirmed' not in {r['name'] for r in c.execute('PRAGMA table_info(nearby_locations)')}:c.execute('ALTER TABLE nearby_locations ADD COLUMN location_confirmed INTEGER NOT NULL DEFAULT 0')
@@ -67,7 +68,7 @@ def install(app,db,payload,clean,err,throttle,production):
  def subscription_shops():
   with db() as c:
    if not admin(c):return err('Administration requise',401)
-   shops=[dict(r) for r in c.execute('''SELECT s.id,s.name,s.city,t.status,t.paid_until,t.radius,t.category,t.category_detail,l.lat,l.lon,l.address,l.location_confirmed FROM shops s JOIN subscriptions t ON s.id=t.shop_id LEFT JOIN nearby_locations l ON l.shop_id=s.id ORDER BY s.id DESC''')]
+   shops=[dict(r) for r in c.execute('''SELECT s.id,s.name,s.city,t.status,t.paid_until,t.radius,t.category,t.category_detail,t.archived_at,l.lat,l.lon,l.address,l.location_confirmed FROM shops s JOIN subscriptions t ON s.id=t.shop_id LEFT JOIN nearby_locations l ON l.shop_id=s.id ORDER BY s.id DESC''')]
    offers=[dict(r) for r in c.execute('SELECT id,shop_id,title,active,radius_override FROM nearby_offers ORDER BY id DESC')]
   return jsonify(shops=shops,offers=offers)
  @app.post('/api/admin/shop')
@@ -79,7 +80,18 @@ def install(app,db,payload,clean,err,throttle,production):
    if not admin(c):return err('Administration requise',401)
    t=c.execute('SELECT * FROM subscriptions WHERE shop_id=?',(sid,)).fetchone()
    if not t:return err('Commerce introuvable',404)
-   if action=='cash':
+   if action=='archive':
+    if p.get('confirm') is not True:return err('Confirmation obligatoire')
+    if t['status']=='archived':return jsonify(ok=True,duplicate=True)
+    c.execute("UPDATE subscriptions SET status='archived',archived_at=CURRENT_TIMESTAMP WHERE shop_id=?",(sid,))
+    c.execute('DELETE FROM merchant_sessions WHERE user_id IN (SELECT id FROM users WHERE shop_id=?)',(sid,))
+    c.execute("UPDATE store_scan_requests SET state='expired' WHERE shop_id=? AND state='pending'",(sid,))
+   elif action=='restore':
+    if p.get('confirm') is not True:return err('Confirmation obligatoire')
+    if t['status']!='archived':return err('Commerce non archive',409)
+    c.execute("UPDATE subscriptions SET status='blocked',archived_at=NULL WHERE shop_id=?",(sid,))
+   elif t['status']=='archived':return err('Commerce archive : restaurez-le avant toute modification',409)
+   elif action=='cash':
     ref=clean(p.get('reference'),80)
     if not ref:return err('Reference du recu obligatoire')
     old=c.execute('SELECT shop_id FROM cash_payments WHERE reference=?',(ref,)).fetchone()

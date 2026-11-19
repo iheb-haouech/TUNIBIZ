@@ -117,7 +117,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  Container(padding:const EdgeInsets.all(23),decoration:BoxDecoration(gradient:const LinearGradient(colors:[ink,Color(0xFF174158)]),borderRadius:BorderRadius.circular(23)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
  const Text('MON PORTEFEUILLE',style:TextStyle(color:mint,fontSize:11,letterSpacing:2,fontWeight:FontWeight.bold)),
  const SizedBox(height:10),Text('Bonjour '+profile['name'].toString(),style:const TextStyle(fontSize:29,color:Colors.white,fontWeight:FontWeight.w800)),Text(profile['email'].toString(),style:const TextStyle(color:Colors.white60)),const SizedBox(height:20),
- Row(children:[Expanded(child:stat(cards.length.toString(),'Cartes actives')),Expanded(child:stat(available.toString(),'Récompenses accessibles'))])
+ Row(children:[Expanded(child:stat(cards.length.toString(),'Mes cartes')),Expanded(child:stat(available.toString(),'Récompenses accessibles'))])
  ])),const SizedBox(height:18),
  FilledButton.icon(onPressed:busy?null:scanMerchant,icon:const Icon(Icons.qr_code_scanner),label:const Text('Scanner le QR du commerce')),
  FilledButton.tonalIcon(onPressed:busy?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>StoresPage(api:api))),icon:const Icon(Icons.storefront),label:const Text('Tous les établissements & offres')),
@@ -125,7 +125,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  TextButton.icon(onPressed:busy?null:addCard,icon:const Icon(Icons.add_card),label:const Text('Ajouter une ancienne carte par code')),
  const SizedBox(height:10),const Text('Mes commerces',style:TextStyle(color:ink,fontSize:24,fontWeight:FontWeight.w800)),const Text('Les points ne sont pas transférables entre commerces.',style:TextStyle(color:muted,fontSize:12)),
  if(cards.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:30),child:Center(child:Text('Aucune carte. Scannez le QR d’un commerce pour commencer.'))),
- for(final card in cards)Padding(padding:const EdgeInsets.only(top:12),child:WalletCard(card:Map<String,dynamic>.from(card),onOpen:busy?null:()=>selectCard(card['id'] as int),onStore:busy||card['shop_id']==null?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>StorePage(api:api,id:card['shop_id'] as int))),onRemove:busy?null:()=>unlink(card['id'] as int))),
+ for(final card in cards)Padding(padding:const EdgeInsets.only(top:12),child:WalletCard(card:Map<String,dynamic>.from(card),onOpen:busy?null:()=>selectCard(card['id'] as int),onStore:busy||card['shop_id']==null||card['archived']==1?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>StorePage(api:api,id:card['shop_id'] as int))),onRemove:busy?null:()=>unlink(card['id'] as int))),
  if(profile['google_linked']==true)TextButton(onPressed:busy?null:signInGoogle,child:const Text('Reconnexion Google')),
  const SizedBox(height:28),TextButton(onPressed:busy?null:deleteAccount,child:const Text('Supprimer mon compte',style:TextStyle(color:Colors.red))),
  ]);
@@ -139,7 +139,7 @@ class WalletCard extends StatelessWidget{
  @override Widget build(BuildContext context)=>Material(color:Colors.white,borderRadius:BorderRadius.circular(20),clipBehavior:Clip.antiAlias,child:InkWell(onTap:onOpen,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
  Container(width:double.infinity,padding:const EdgeInsets.all(18),decoration:const BoxDecoration(gradient:LinearGradient(colors:[ink,Color(0xFF22415D)])),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
  Row(children:[const Icon(Icons.storefront_outlined,color:mint),const SizedBox(width:8),Expanded(child:Text(card['shop'].toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800,color:Colors.white))),const Icon(Icons.chevron_right,color:Colors.white)]),
- Text(card['city'].toString(),style:const TextStyle(color:Colors.white60,fontSize:12)),const SizedBox(height:20),Text(card['points'].toString()+' pts',style:const TextStyle(color:mint,fontWeight:FontWeight.w900,fontSize:34,letterSpacing:-1))])),
+ Text(card['city'].toString()+(card['archived']==1?' · Commerce archivé':''),style:const TextStyle(color:Colors.white60,fontSize:12)),const SizedBox(height:20),Text(card['points'].toString()+' pts',style:const TextStyle(color:mint,fontWeight:FontWeight.w900,fontSize:34,letterSpacing:-1))])),
  if(onStore!=null)Padding(padding:const EdgeInsets.fromLTRB(12,8,12,0),child:FilledButton.tonalIcon(onPressed:onStore,icon:const Icon(Icons.storefront_outlined),label:const Text('Voir les offres du commerce'))),
  Padding(padding:const EdgeInsets.symmetric(horizontal:15,vertical:6),child:Row(children:[Expanded(child:Text(card['eligible'].toString()+' récompense(s) accessible(s)',style:const TextStyle(color:muted,fontSize:12))),TextButton(onPressed:onOpen,child:const Text('Ouvrir')),IconButton(tooltip:'Retirer la carte',onPressed:onRemove,icon:const Icon(Icons.remove_circle_outline,color:muted))]))
  ])));
