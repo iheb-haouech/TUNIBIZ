@@ -15,6 +15,7 @@ import 'business_dashboard.dart';
 import 'business_offer.dart';
 import 'business_nearby.dart';
 import 'merchant_identity.dart';
+import 'storefront.dart';
 import 'checkout_scanner.dart';
 import 'store_scan.dart';
 import 'update_center.dart';
@@ -134,6 +135,7 @@ class _WorkspaceState extends State<Workspace>{
  Widget metric(String label,String value)=>panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(label),Text(value,style:const TextStyle(fontSize:25,fontWeight:FontWeight.bold))]));
  List<Widget> merchantView(Map<String,dynamic> d)=>[
  if(tab==1)FilledButton.icon(onPressed:busy?null:()async{await Navigator.push(context,MaterialPageRoute(builder:(_)=>StoreApprovals(api:api)));if(mounted)await run(refresh);},icon:const Icon(Icons.qr_code),label:const Text('QR du commerce & validations')),
+ if(tab==0||tab==2)Padding(padding:const EdgeInsets.only(bottom:12),child:FilledButton.icon(onPressed:busy?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>StoreManager(api:api))),icon:const Icon(Icons.storefront),label:const Text('Ma vitrine · offres & coupons'))),
  if(tab==0)MerchantQrPanel(api:api,onApprovals:()async{await Navigator.push(context,MaterialPageRoute(builder:(_)=>StoreApprovals(api:api)));if(mounted)await run(refresh);}),
  if(tab==0)const SizedBox(height:14),
  if(tab==0)BusinessDashboard(data:d,onQr:busy?null:identifyQr,onCustomer:busy?null:addCustomer,onCampaign:busy?null:campaign,onNearby:busy?null:()=>setState(()=>tab=4),onApprovals:busy?null:()async{await Navigator.push(context,MaterialPageRoute(builder:(_)=>StoreApprovals(api:api)));if(mounted)await run(refresh);},onAnnouncements:()=>setState(()=>tab=2)),

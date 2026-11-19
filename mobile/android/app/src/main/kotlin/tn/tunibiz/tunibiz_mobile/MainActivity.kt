@@ -22,6 +22,8 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity: FlutterActivity() {
+ private val photoPicker by lazy { StorePhotoPicker(this) }
+ override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){super.onActivityResult(requestCode,resultCode,data);photoPicker.onResult(requestCode,resultCode,data)}
  private var locationResult: MethodChannel.Result?=null
  private var permissionOnlyResult: MethodChannel.Result?=null
  private var notificationResult: MethodChannel.Result?=null
@@ -34,6 +36,7 @@ class MainActivity: FlutterActivity() {
  override fun onPause(){presented=false;if(listener!=null)finishLocation(null);super.onPause()}
  override fun configureFlutterEngine(engine:FlutterEngine){
   super.configureFlutterEngine(engine)
+  photoPicker.attach(MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/photo"))
   PrivateBridge(this).attach(MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/private"))
   MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/nearby").setMethodCallHandler{call,result->
    when(call.method){

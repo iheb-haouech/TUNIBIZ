@@ -70,6 +70,9 @@ def unauth(e):return err('Connexion requise',401)
 def missing(e):return err('Introuvable',404)
 @app.before_request
 def csrf():
+ if request.path=='/api/storefront/photo':
+  request.max_content_length=400000
+
  if request.method=='POST' and (not session.get('csrf') or not secrets.compare_digest(request.headers.get('X-CSRF-Token',''),session['csrf'])):return err('Session invalide, rechargez la page',403)
 @app.after_request
 def security(r):
@@ -209,6 +212,8 @@ from store_scan import install as install_store_scan
 install_store_scan(app,db,payload,merchant,err)
 from app_release import install as install_release
 install_release(app,db,payload,err)
+from storefront import install as install_storefront
+install_storefront(app,db,payload,clean,merchant,err)
 if __name__=='__main__':
  if PRODUCTION:raise RuntimeError('Use a production WSGI server, not Flask development server')
  print('TUNIBIZ local preview: http://127.0.0.1:8877',flush=True)

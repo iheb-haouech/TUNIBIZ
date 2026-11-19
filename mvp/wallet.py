@@ -84,7 +84,7 @@ def install(app,db,payload,clean,err):
    cards=[dict(r) for r in c.execute("""WITH balances AS (
      SELECT customer_id,SUM(points) points,COUNT(CASE WHEN kind='purchase' THEN 1 END) purchases
      FROM loyalty_ledger GROUP BY customer_id)
-     SELECT w.customer_id id,s.name shop,s.city,a.name card_name,a.consent,
+     SELECT w.customer_id id,s.id shop_id,s.name shop,s.city,a.name card_name,a.consent,
      COALESCE(b.points,0) points,COALESCE(b.purchases,0) purchases,
      (SELECT COUNT(*) FROM rewards r WHERE r.shop_id=a.shop_id AND r.active=1 AND r.cost<=COALESCE(b.points,0) AND EXISTS (SELECT 1 FROM subscriptions t WHERE t.shop_id=a.shop_id AND t.status='active' AND t.paid_until>date('now','+1 hour'))) eligible
      FROM wallet_cards w JOIN crm_customers a ON a.id=w.customer_id AND a.code_hash=w.card_hash JOIN shops s ON s.id=a.shop_id
