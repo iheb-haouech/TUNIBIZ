@@ -119,6 +119,8 @@ Certificat permanent existant, empreintes publiques relevées sans exporter la c
 
 Le NDK requis par Flutter est 28.2.13676358 (r28c). Sa réparation conserve l'installation incomplète et vérifie le téléchargement officiel avant extraction ; aucune clé de signature n'est générée.
 
+La revue complète et tous les commits sont accessibles dans la [pull request de préparation #1](https://github.com/iheb-haouech/TUNIBIZ/pull/1), laissée en brouillon.
+
 ## Commits de développement
 
 | Commit | Bloc |
@@ -128,7 +130,6 @@ Le NDK requis par Flutter est 28.2.13676358 (r28c). Sa réparation conserve l'in
 | [5f6ff67](https://github.com/iheb-haouech/TUNIBIZ/commit/5f6ff67) | Transactions, email, protection du bonus et dépendances |
 | [5b0860d](https://github.com/iheb-haouech/TUNIBIZ/commit/5b0860d) | Navigation persistante et résilience Android |
 | [15033ac](https://github.com/iheb-haouech/TUNIBIZ/commit/15033ac) | Indicateurs métier réels et dates de Tunis |
-
 | [621f840](https://github.com/iheb-haouech/TUNIBIZ/commit/621f840) | GA4/GTM avec consentement, Firebase Android, vérification du binaire |
 
 ## Google Analytics et Tag Manager
