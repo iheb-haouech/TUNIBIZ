@@ -1,11 +1,15 @@
 import 'dart:convert';
 import 'dart:async';
 import 'usage_analytics.dart';
+import 'session_vault.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 const baseUrl=String.fromEnvironment('API_BASE',defaultValue:'http://10.0.2.2:8877');
 class Api {
+ final String? scope;bool restored=false;bool signedIn=false;
+ Api({this.scope});
+ Future<void> clearLocal()async{signedIn=false;cookies.clear();csrf='';if(scope!=null)await SessionVault.write(scope!,null);}
  final HttpClient client=HttpClient()..connectionTimeout=const Duration(seconds:10);
  final Map<String,Cookie> cookies={};
  String csrf='';
@@ -20,11 +24,20 @@ class Api {
   for(final c in res.cookies){if(c.maxAge==0){cookies.remove(c.name);}else{cookies[c.name]=c;}}
   if(res.statusCode>=300&&res.statusCode<400){await res.drain();throw Exception('Redirection serveur refusée');}
  final decoded=jsonDecode(await res.transform(utf8.decoder).join()) as Map<String,dynamic>;
-  if(res.statusCode>=400)throw Exception(decoded['error']??'Erreur serveur');
+  if(res.statusCode>=400){if(res.statusCode==401&&((scope=='wallet'&&path=='/wallet')||(scope=='merchant'&&path=='/crm')||(scope=='legacy'&&path=='/loyalty')))await clearLocal();throw Exception(decoded['error']??'Erreur serveur');}
+  if(scope!=null){
+   if(['/wallet/login','/wallet/register','/google/login','/login','/loyalty/login'].contains(path))signedIn=true;
+   if(['/wallet/logout','/wallet/delete','/logout'].contains(path)||(path=='/loyalty/logout'&&scope=='legacy')){await clearLocal();}
+   else if(signedIn&&cookies['session']!=null)await SessionVault.write(scope!,cookies['session']!.value);
+  }
   final event=res.headers.value('X-Tunibiz-Event');if(event!=null)unawaited(UsageAnalytics.log(event));
   return decoded;
  }
- Future<void> init() async{csrf=(await call('/session'))['csrf'] as String;}
+ Future<bool> restore()async{
+ if(!restored){restored=true;if(scope!=null&&baseUrl.startsWith('https://')){final saved=await SessionVault.read(scope!);if(saved!=null){cookies['session']=Cookie('session',saved);signedIn=true;}}}
+ return signedIn;
+ }
+ Future<void> init() async{await restore();csrf=(await call('/session'))['csrf'] as String;}
  static Future<void> usage(String event)async{
  if(!UsageAnalytics.allowed)return;final a=Api();
  try{await a.init();if(!UsageAnalytics.allowed)return;await a.call('/analytics/event',{'event':event});await UsageAnalytics.log(event);}catch(_){}finally{a.close();}

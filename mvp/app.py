@@ -207,6 +207,8 @@ from password_recovery import install as install_recovery
 install_recovery(app,db,payload,err,throttle)
 from store_scan import install as install_store_scan
 install_store_scan(app,db,payload,merchant,err)
+from app_release import install as install_release
+install_release(app,db,payload,err)
 if __name__=='__main__':
  if PRODUCTION:raise RuntimeError('Use a production WSGI server, not Flask development server')
  print('TUNIBIZ local preview: http://127.0.0.1:8877',flush=True)

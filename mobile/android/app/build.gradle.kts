@@ -10,6 +10,9 @@ plugins {
 val signingPropsFile = rootProject.file("key.properties")
 val signingProps = Properties()
 if (signingPropsFile.exists()) FileInputStream(signingPropsFile).use { signingProps.load(it) }
+for ((property, env) in mapOf("storeFile" to "TUNIBIZ_SIGN_STORE", "storePassword" to "TUNIBIZ_SIGN_PASSWORD", "keyAlias" to "TUNIBIZ_SIGN_ALIAS", "keyPassword" to "TUNIBIZ_SIGN_KEY_PASSWORD")) {
+    System.getenv(env)?.takeIf { it.isNotBlank() }?.let { signingProps.setProperty(property, it) }
+}
 val hasReleaseKey = listOf("storeFile", "storePassword", "keyAlias", "keyPassword").all { !signingProps.getProperty(it).isNullOrBlank() }
 if (gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) } && !hasReleaseKey) {
     throw GradleException("Production signing is required: configure android/key.properties privately.")

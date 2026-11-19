@@ -12,6 +12,7 @@ import 'wallet.dart';
 import 'business_dashboard.dart';
 import 'checkout_scanner.dart';
 import 'store_scan.dart';
+import 'update_center.dart';
 import 'merchant_enrollment.dart';
 
 const navy=Color(0xFF091628), blue=Color(0xFF2563EB), teal=Color(0xFF2DD4BF);
@@ -36,14 +37,16 @@ class Home extends StatelessWidget{
  const SizedBox(height:18),
  Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:FeatureTile(asset:'assets/cafe.webp',title:'Vos habitudes ont de la valeur',subtitle:'Retrouvez vos avantages et récompenses chez les commerces partenaires.',tag:'FIDÉLITÉ',onTap:()=>open(context,1))),
  Padding(padding:const EdgeInsets.all(20),child:OutlinedButton.icon(onPressed:()=>open(context,3),icon:const Icon(Icons.storefront_outlined),label:const Text('Espace commerçant'))),
+ const Padding(padding:EdgeInsets.symmetric(horizontal:20),child:UpdateEntry()),
  Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:TextButton(onPressed:()async{final v=await UsageAnalytics.preferences(context);if(v!=null){await UsageAnalytics.change(v);if(v)await Api.usage('home_view');}},child:const Text('Préférences de statistiques'))),
  const Padding(padding:EdgeInsets.fromLTRB(20,0,20,20),child:Text('Prototype de test · Les photos illustrent les catégories, pas des offres actives.',style:TextStyle(color:muted,fontSize:12)))
  ])),bottomNavigationBar:PremiumNav(index:0,onSelected:(i)=>open(context,i)));
 }
 class Workspace extends StatefulWidget{final bool merchant;final Api? sharedApi;final Map<String,dynamic>? initialData;const Workspace({super.key,required this.merchant,this.sharedApi,this.initialData});@override State<Workspace> createState()=>_WorkspaceState();}
 class _WorkspaceState extends State<Workspace>{
- final scroll=ScrollController();late final Api api=widget.sharedApi??Api();final email=TextEditingController(),secret=TextEditingController();Map<String,dynamic>? data;String message='';bool busy=false;int tab=0;
- @override void initState(){super.initState();data=widget.initialData;}
+ final scroll=ScrollController();late final Api api=widget.sharedApi??Api(scope:widget.merchant?'merchant':'legacy');final email=TextEditingController(),secret=TextEditingController();Map<String,dynamic>? data;String message='';bool busy=false;int tab=0;
+ @override void initState(){super.initState();data=widget.initialData;if(widget.sharedApi==null&&data==null)restoreSession();}
+ Future<void> restoreSession()async{try{if(await api.restore()&&mounted)await run(()async{await api.init();await refresh();});}catch(_){}}
  @override void dispose(){scroll.dispose();email.dispose();secret.dispose();if(widget.sharedApi==null)api.close();super.dispose();}
  Future<void> run(Future<void> Function() task)async{if(busy)return;setState((){busy=true;message='';});try{await task();}catch(e){if(mounted)setState(()=>message=e.toString());}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> refresh()async{final d=await api.call(widget.merchant?'/crm':'/loyalty');if(mounted)setState(()=>data=d);}

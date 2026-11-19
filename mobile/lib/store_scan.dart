@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'api.dart';
@@ -20,10 +21,12 @@ class StoreApprovals extends StatefulWidget{
 }
 class _StoreApprovalsState extends State<StoreApprovals>{
  Map<String,dynamic>? qr;List<dynamic> queue=[];bool busy=false;String msg='';
- @override void initState(){super.initState();refresh();}
- Future<void> refresh()async{
+ Timer? poll;bool baseline=false;Set<String> known={};
+ @override void initState(){super.initState();refresh();poll=Timer.periodic(const Duration(seconds:15),(_){if(mounted&&WidgetsBinding.instance.lifecycleState==AppLifecycleState.resumed&&ModalRoute.of(context)?.isCurrent==true)refresh(silent:true);});}
+ @override void dispose(){poll?.cancel();super.dispose();}
+ Future<void> refresh({bool silent=false})async{
  if(busy)return;setState(()=>busy=true);
- try{final q=await widget.api.call('/crm/store-qr'),r=await widget.api.call('/crm/store-scans');if(mounted)setState((){qr=q;queue=r['requests'] as List;});}
+ try{final q=qr??await widget.api.call('/crm/store-qr'),r=await widget.api.call('/crm/store-scans');if(mounted){final next=r['requests'] as List;final ids=next.map((x)=>x['id'].toString()).toSet();if(baseline&&ids.difference(known).isNotEmpty)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Nouvelle demande QR à valider')));known=ids;baseline=true;setState((){qr=q;queue=next;});}}
  catch(e){if(mounted)setState(()=>msg=e.toString());}finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> decide(Map r,bool approved)async{

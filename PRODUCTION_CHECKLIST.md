@@ -23,3 +23,6 @@ Créer le projet Google Cloud pour TUNIBIZ, écran de consentement externe, clie
 
 ## Récupération (pilote)
 Configurer côté serveur TUNIBIZ_BREVO_KEY et TUNIBIZ_EMAIL_FROM (expéditeur vérifié). Vérifier accès HTTPS sortant à api.brevo.com depuis PythonAnywhere gratuit : non garanti. Ne pas mettre ces secrets dans GitHub. Liens valables 20 minutes, usage unique, révoquent sessions. Comptes Google récupérés chez Google. Tester envoi réel vers une adresse de test avant d'annoncer disponibilité. /solutions conserve la page détaillée et /download vérifie la release pilote GitHub. APK 0.4.0 signé debug, réservé aux tests, pas au marché.
+
+## V0.4.2
+API /api/app/version et gestion /admin : annoncer uniquement un APK signé et contrôlé, URL officielle, versionCode croissant, SHA-256. Le téléphone ouvre le téléchargement officiel ; il ne télécharge pas ou ne vérifie pas lui-même le fichier. Android valide la signature. Notifications QR en premier plan (15/30 secondes), FCM non activé. Sessions chiffrées Android Keystore, séparées par rôle, échéance serveur conservée. Test réel téléphone requis. Sauvegarde SQLite cohérente : python3.11 mvp/backup_db.py sur PythonAnywhere, avant git pull, copie chiffrée hors hébergement et contrôle de restauration à organiser. Ne publiez jamais de clé privée. Ne pas déclencher de build debug pour une diffusion permanente.

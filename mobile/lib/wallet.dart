@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'api.dart';
 import 'store_scan.dart';
@@ -13,10 +14,14 @@ class ConsumerWallet extends StatefulWidget{
  @override State<ConsumerWallet> createState()=>_ConsumerWalletState();
 }
 class _ConsumerWalletState extends State<ConsumerWallet>{
- late final Api api=widget.apiOverride??Api();
+ late final Api api=widget.apiOverride??Api(scope:'wallet');
  final name=TextEditingController(),email=TextEditingController(),password=TextEditingController();
  Map<String,dynamic>? data;bool registering=false,busy=false;String message='';
- @override void dispose(){name.dispose();email.dispose();password.dispose();if(widget.apiOverride==null)api.close();super.dispose();}
+ Timer? poll;bool polling=false;Map<String,String> seen={};
+ @override void initState(){super.initState();if(widget.apiOverride==null)restoreSession();poll=Timer.periodic(const Duration(seconds:30),(_)=>checkRequests());}
+ Future<void> restoreSession()async{try{if(await api.restore()&&mounted)await run(()async{await api.init();await refresh();});}catch(_){}}
+ Future<void> checkRequests()async{if(!mounted||data==null||busy||polling||WidgetsBinding.instance.lifecycleState!=AppLifecycleState.resumed||ModalRoute.of(context)?.isCurrent!=true)return;polling=true;try{final d=await api.call('/wallet/store-scans');if(!mounted||data==null)return;for(final r in d['requests']){final id=r['id'].toString(),state=r['state'].toString();if(seen[id]=='pending'&&(state=='approved'||state=='rejected')){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(state=='approved'?'Achat validé : +'+r['points'].toString()+' points':'Demande refusée')));await refresh();}seen[id]=state;}}catch(_){}finally{polling=false;}}
+ @override void dispose(){poll?.cancel();name.dispose();email.dispose();password.dispose();if(widget.apiOverride==null)api.close();super.dispose();}
  Future<void> run(Future<void> Function() fn)async{
  if(busy)return;setState((){busy=true;message='';});
  try{await fn();}catch(e){if(mounted)setState(()=>message=e.toString().replaceFirst('Exception: ',''));}
@@ -42,7 +47,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  await run(()async{
  final info=await api.call('/store/'+slug);if(!mounted)return;
  final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:Text(info['shop']['name'].toString()),content:const Text('Rejoindre ce commerce ou demander la validation de votre achat ?'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Confirmer'))]));
- if(ok!=true||!mounted)return;final r=await api.call('/wallet/store-scan',{'slug':slug});await refresh();
+ if(ok!=true||!mounted)return;final r=await api.call('/wallet/store-scan',{'slug':slug});if(r['id']!=null)seen[r['id'].toString()]='pending';await refresh();
  if(mounted)setState(()=>message=r['status']=='welcome'?'Bienvenue : +3 points !':'Demande envoyée. Le commerçant doit valider vos points.');
  });
  }
@@ -67,7 +72,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Retirer cette carte ?'),content:const Text('Les points restent chez le commerçant. Vous pourrez rattacher la carte avec son code personnel valide.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Retirer'))]));
  if(ok==true&&mounted)await run(()async{await api.call('/wallet/unlink',{'id':id});await refresh();});
  }
- Future<void> logout()async=>run(()async{await api.call('/wallet/logout',{});if(mounted)setState(()=>data=null);});
+ Future<void> logout()async=>run(()async{await api.call('/wallet/logout',{});seen.clear();if(mounted)setState(()=>data=null);});
  Future<void> deleteAccount()async{
  final google=data?['profile']?['google_linked']==true;
  final pw=await showDialog<String>(context:context,builder:(ctx){String value='';return AlertDialog(title:const Text('Supprimer mon compte'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[const Text('Action irreversible : profil, sessions et cartes rattachees seront supprimes ou anonymises. Les transactions sans nom ou telephone restent dans les registres des commerces. Les points rattaches ne seront plus accessibles.'),const SizedBox(height:12),if(google)const Text('Une connexion Google recente est requise (5 minutes).')else TextField(obscureText:true,onChanged:(v)=>value=v,decoration:const InputDecoration(labelText:'Confirmer le mot de passe'))])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,value),child:const Text('Supprimer definitivement'))]);});

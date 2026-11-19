@@ -33,6 +33,7 @@ class MainActivity: FlutterActivity() {
  override fun onPause(){presented=false;if(listener!=null)finishLocation(null);super.onPause()}
  override fun configureFlutterEngine(engine:FlutterEngine){
   super.configureFlutterEngine(engine)
+  PrivateBridge(this).attach(MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/private"))
   MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/nearby").setMethodCallHandler{call,result->
    when(call.method){
     "position"->{
