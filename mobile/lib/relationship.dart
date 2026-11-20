@@ -39,11 +39,13 @@ class Home extends StatelessWidget{
  businessBuilder:()=>CommerceBusiness(apiOverride:businessApiOverride));
 }
 class Workspace extends StatefulWidget{final bool merchant;final Api? sharedApi;final Map<String,dynamic>? initialData;const Workspace({super.key,required this.merchant,this.sharedApi,this.initialData});@override State<Workspace> createState()=>_WorkspaceState();}
-class _WorkspaceState extends State<Workspace>{
+class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver{
+ Timer? syncTimer;
  final scroll=ScrollController();late final Api api=widget.sharedApi??Api(scope:widget.merchant?'merchant':'legacy');final email=TextEditingController(),secret=TextEditingController();Map<String,dynamic>? data;String message='';bool busy=false;int tab=0;
- @override void initState(){super.initState();data=widget.initialData;if(widget.sharedApi==null&&data==null)restoreSession();}
+ @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);data=widget.initialData;if(widget.sharedApi==null&&data==null)restoreSession();syncTimer=Timer.periodic(const Duration(seconds:25),(_){if(mounted&&!busy&&data!=null&&WidgetsBinding.instance.lifecycleState==AppLifecycleState.resumed&&ModalRoute.of(context)?.isCurrent==true)run(refresh);});}
+ @override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed&&mounted&&!busy&&data!=null)run(refresh);}
  Future<void> restoreSession()async{await run(()async{if(await api.restore()&&mounted){await api.init();await refresh();}});}
- @override void dispose(){scroll.dispose();email.dispose();secret.dispose();if(widget.sharedApi==null)api.close();super.dispose();}
+ @override void dispose(){syncTimer?.cancel();WidgetsBinding.instance.removeObserver(this);scroll.dispose();email.dispose();secret.dispose();if(widget.sharedApi==null)api.close();super.dispose();}
  Future<void> run(Future<void> Function() task)async{if(busy)return;setState((){busy=true;message='';});try{await task();}catch(e){if(mounted)setState((){if(e is SessionExpired)data=null;message=e.toString();});}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> refresh()async{final d=await api.call(widget.merchant?'/crm':'/loyalty');if(mounted)setState(()=>data=d);}
  Future<void> signIn()async=>run(()async{await api.init();await api.call(widget.merchant?'/login':'/loyalty/login',widget.merchant?{'email':email.text,'password':secret.text}:{'code':secret.text});secret.clear();await refresh();});
@@ -132,6 +134,7 @@ class _WorkspaceState extends State<Workspace>{
  final description=next.isNotEmpty?'Encore '+(goal-points).toString()+' points pour votre prochaine récompense.':rewards.isEmpty?'Vos récompenses apparaîtront ici dès leur publication.':'Vous avez atteint un palier de récompense.';
  final rewardsKey=GlobalKey();
  return [
+ if(d['logo']!=null)Padding(padding:const EdgeInsets.all(20),child:Align(alignment:AlignmentDirectional.centerStart,child:ClipOval(child:SizedBox(width:66,height:66,child:StoreImage(d['logo'],height:66,api:api))))),
  PremiumHero(name:'Bonjour '+c['name'],shop:d['shop'].toString(),description:description,action:'Mes récompenses',points:points,goal:goal,signedIn:true,onAction:(){final ctx=rewardsKey.currentContext;if(ctx!=null){Scrollable.ensureVisible(ctx,duration:const Duration(milliseconds:350));}else if(scroll.hasClients){scroll.animateTo(min(510.0,scroll.position.maxScrollExtent),duration:const Duration(milliseconds:350),curve:Curves.easeOut);}}),
  Padding(padding:const EdgeInsets.fromLTRB(20,16,20,0),child:FilledButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>LoyaltyQr(api:api,shop:d['shop'].toString()))),icon:const Icon(Icons.qr_code_2),label:const AppText('Présenter ma carte QR'))),
  Padding(key:rewardsKey,padding:const EdgeInsets.fromLTRB(20,26,20,12),child:const AppText('Vos récompenses',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:ink))),

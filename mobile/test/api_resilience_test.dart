@@ -76,4 +76,17 @@ void main() {
     await api.call('/wallet/logout', {});
     expect(api.signedIn, isFalse); expect(api.cookies, isEmpty);
   });
+  test('server denial never resurrects a cached private response', () async {
+    var requests=0;
+    await serve((r) async {
+      requests++;
+      r.response.statusCode=requests==1?200:403;
+      r.response.write(requests>2?'<html>Forbidden</html>':jsonEncode(requests==1?{'private':'TEST'}:{'error':'Access denied'}));
+      await r.response.close();
+    });
+    expect((await api.cached('/restricted'))['private'],'TEST');
+    await expectLater(api.cached('/restricted'),throwsA(isA<ApiUnavailable>().having((e)=>e.cacheable,'cacheable',false)));
+    await expectLater(api.cached('/restricted'),throwsA(isA<ApiUnavailable>().having((e)=>e.cacheable,'cacheable',false)));
+  });
+
 }

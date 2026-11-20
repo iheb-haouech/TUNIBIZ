@@ -14,7 +14,8 @@ class SessionExpired implements Exception {
 }
 class ApiUnavailable implements Exception {
   final String message;
-  const ApiUnavailable(this.message);
+  final bool cacheable;
+  const ApiUnavailable(this.message,{this.cacheable=true});
   @override
   String toString() => message;
 }
@@ -92,7 +93,7 @@ class Api {
       }
       if (res.statusCode >= 300 && res.statusCode < 400) {
         req.abort();
-        throw const ApiUnavailable('Redirection serveur refusée');
+        throw const ApiUnavailable('Redirection serveur refusée',cacheable:false);
       }
       final raw = await _body(res);
       Map<String, dynamic>? decoded;
@@ -101,14 +102,14 @@ class Api {
         if (value is Map<String, dynamic>) decoded = value;
       } on FormatException { /* HTML and malformed JSON are never shown to users. */ }
       if (decoded == null) {
-        throw const ApiUnavailable('Serveur temporairement indisponible. Réessayez dans un instant.');
+        throw ApiUnavailable('Serveur temporairement indisponible. Réessayez dans un instant.',cacheable:res.statusCode<400||res.statusCode>=500);
       }
       if (res.statusCode >= 400) {
         final error = decoded['error'];
         if (res.statusCode >= 500 || error is! String || error.length > 500) {
           throw const ApiUnavailable('Serveur temporairement indisponible. Réessayez dans un instant.');
         }
-        throw ApiUnavailable(error);
+        throw ApiUnavailable(error,cacheable:false);
       }
       // Do not replace a saved session on network/proxy errors.
       for (final c in res.cookies) {
@@ -155,7 +156,7 @@ class Api {
   Future<Map<String,dynamic>> cached(String path)async{
     if(!path.startsWith('/')||path.startsWith('/admin'))throw ArgumentError('Cache path');
     try{final data=await call(path);await SecureCache.put(scope,path,data);return data;}
-    on ApiUnavailable {final data=await SecureCache.read(scope,path);if(data!=null)return data;rethrow;}
+    on ApiUnavailable catch(error) {if(!error.cacheable)rethrow;final data=await SecureCache.read(scope,path);if(data!=null)return data;rethrow;}
   }
   Future<void> init() async {
     await restore();

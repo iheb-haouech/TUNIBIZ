@@ -18,7 +18,7 @@ class MobileRepository {
  Future<MobileHome> home()async{
   Map<String,dynamic> h;
   try{h=await api.cached('/commerce/home');}
-  on ApiUnavailable {final saved=await SecureCache.read(api.scope,'/commerce/home');if(saved==null)rethrow;h=saved;}
+  on ApiUnavailable catch(error) {if(!error.cacheable)rethrow;final saved=await SecureCache.read(api.scope,'/commerce/home');if(saved==null)rethrow;h=saved;}
   Map<String,dynamic>? wallet,profile;
   if(h['profile']!=null){final values=await Future.wait([api.cached('/wallet'),api.cached('/commerce/profile')]);wallet=values[0];profile=values[1];}
   final stores=<Map<String,dynamic>>[for(final row in h['stores'] as List? ?? [])Map<String,dynamic>.from(row as Map)];
