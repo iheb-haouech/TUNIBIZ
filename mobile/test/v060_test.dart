@@ -6,6 +6,7 @@ import 'package:tunibiz_mobile/secure_cache.dart';
 import 'package:tunibiz_mobile/external_links.dart';
 import 'package:tunibiz_mobile/relationship.dart';
 import 'package:tunibiz_mobile/app_language.dart';
+import 'package:tunibiz_mobile/storefront.dart';
 
 class PartnerApi extends Api {
  bool pilotAvailable=true;
@@ -15,6 +16,13 @@ class PartnerApi extends Api {
   if(path=='/commerce/profile')return {'notifications':[]};
   if(path.startsWith('/store/')&&pilotAvailable)return {'shop':{'id':4,'slug':pilotPartners.keys.first,'name':'المخزن الجربي','city':'Djerba'}};
   throw const ApiUnavailable('Network unavailable');
+ }
+}
+class PartialStoreApi extends PartnerApi {
+ PartialStoreApi(){signedIn=true;}
+ @override Future<Map<String,dynamic>> cached(String path)async{
+  if(path=='/stores/4')throw const ApiUnavailable('Not published',cacheable:false);
+  return super.cached(path);
  }
 }
 void main(){
@@ -55,4 +63,24 @@ void main(){
   expect(tester.takeException(),isNull);
   await tester.pumpWidget(const SizedBox());await tester.pumpAndSettle();
  });
+ testWidgets('partial partner and private preview render without optional lists, preserving existing card',(tester)async{
+  final api=PartialStoreApi();addTearDown(api.close);
+  await tester.pumpWidget(MaterialApp(home:StorePage(api:api,id:4)));await tester.pumpAndSettle();
+  expect(find.text('50 points dans ce commerce'),findsOneWidget);
+  expect(find.text('Rejoindre la fidélité'),findsNothing);
+  expect(tester.takeException(),isNull);
+  await tester.pumpWidget(MaterialApp(home:StorePage(key:const ValueKey('preview'),api:api,id:4,preview:const {'id':4,'name':'Aperçu TEST','city':'Djerba'})));await tester.pumpAndSettle();
+  expect(find.text('Prévisualisation privée'),findsOneWidget);expect(tester.takeException(),isNull);
+  await tester.pumpWidget(const SizedBox());await tester.pumpAndSettle();
+ });
+
+ testWidgets('loyalty without published rewards never invents a 100 point objective',(tester)async{
+  final api=PartnerApi();addTearDown(api.close);
+  await tester.pumpWidget(MaterialApp(home:Workspace(merchant:false,sharedApi:api,initialData:const {
+   'shop':'PARTENAIRE TEST','customer':{'name':'TEST','points':50,'consent':0},'rewards':[],'campaigns':[],'history':[]
+  })));await tester.pumpAndSettle();
+  expect(find.text('Points disponibles'),findsOneWidget);expect(find.text('Objectif 100'),findsNothing);expect(tester.takeException(),isNull);
+  await tester.pumpWidget(const SizedBox());await tester.pumpAndSettle();
+ });
+
 }

@@ -13,7 +13,7 @@ class MobileRepository {
  Future<Map<String,dynamic>> partner(String slug)async{
   final response=await api.cached('/store/$slug'),raw=response['shop'];
   if(raw is! Map||raw['slug']!=slug||raw['id'] is! int)throw const ApiUnavailable('Établissement indisponible.');
-  return {...Map<String,dynamic>.from(raw),'partial':true,'photoAsset':pilotPartners[slug],'category':'other','category_detail':'Établissement partenaire','address':'','offers_count':0,'offers':<dynamic>[],'gallery':<dynamic>[],'rewards':<dynamic>[],'history':<dynamic>[],'coupons':<dynamic>[],'joined':false,'favorite':false,'description':'','hours':'','_cached':response['_cached']==true};
+  return {...Map<String,dynamic>.from(raw),'partial':true,'photoAsset':pilotPartners[slug],'category':'other','category_detail':'Établissement partenaire','address':'','offers_count':0,'offers':<dynamic>[],'nearby':<dynamic>[],'gallery':<dynamic>[],'rewards':<dynamic>[],'history':<dynamic>[],'coupons':<dynamic>[],'joined':false,'favorite':false,'description':'','hours':'','_cached':response['_cached']==true};
  }
  Future<MobileHome> home()async{
   Map<String,dynamic> h;

@@ -8,11 +8,11 @@ class PremiumRing extends StatelessWidget {
  final int points,goal; final bool signedIn;
  const PremiumRing({super.key,required this.points,required this.goal,this.signedIn=true});
  @override Widget build(BuildContext context)=>SizedBox(width:226,height:226,child:Stack(alignment:Alignment.center,children:[
-  Positioned.fill(child:CustomPaint(painter:_RingPainter(signedIn?(points/math.max(1,goal)).clamp(0,1).toDouble():0))),
+  Positioned.fill(child:CustomPaint(painter:_RingPainter(signedIn&&goal>0?(points/math.max(1,goal)).clamp(0,1).toDouble():0))),
   Column(mainAxisSize:MainAxisSize.min,children:[
    AppText(signedIn?points.toString():'—',style:const TextStyle(fontSize:52,color:Colors.white,fontWeight:FontWeight.w800,letterSpacing:-2)),
    const AppText('POINTS',style:TextStyle(color:mint,fontSize:11,fontWeight:FontWeight.w700,letterSpacing:3)),
-   const SizedBox(height:8),AppText(signedIn?'Objectif '+goal.toString():'Votre fidélité',style:const TextStyle(color:Colors.white60,fontSize:12))
+   const SizedBox(height:8),AppText(signedIn?(goal>0?'Objectif '+goal.toString():'Points disponibles'):'Votre fidélité',style:const TextStyle(color:Colors.white60,fontSize:12))
   ])
  ]));
 }

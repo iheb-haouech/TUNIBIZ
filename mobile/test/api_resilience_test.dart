@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:async';
+import 'package:tunibiz_mobile/secure_cache.dart';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tunibiz_mobile/api.dart';
@@ -87,6 +89,31 @@ void main() {
     expect((await api.cached('/restricted'))['private'],'TEST');
     await expectLater(api.cached('/restricted'),throwsA(isA<ApiUnavailable>().having((e)=>e.cacheable,'cacheable',false)));
     await expectLater(api.cached('/restricted'),throwsA(isA<ApiUnavailable>().having((e)=>e.cacheable,'cacheable',false)));
+  });
+
+  test('local sign-out completes without waiting for server revocation, retaining old request scope',()async{
+    final started=Completer<Map<String,String>>(),release=Completer<void>(),finished=Completer<void>();
+    await serve((r)async{
+      started.complete({'cookie':r.headers.value('cookie')??'','csrf':r.headers.value('X-CSRF-Token')??''});
+      await release.future;r.response.write('{}');await r.response.close();finished.complete();
+    });
+    api.csrf='old-csrf';await SecureCache.put('wallet','/wallet',{'private':'TEST'});
+    await api.signOut('/wallet/logout');
+    expect(api.signedIn,false);expect(api.cookies,isEmpty);expect(await SecureCache.read('wallet','/wallet'),isNull);
+    final request=await started.future.timeout(const Duration(seconds:5));
+    expect(request['cookie'],contains('saved-session'));expect(request['csrf'],'old-csrf');
+    release.complete();await finished.future;
+  });
+  test('in-flight response cannot resurrect cookies or private cache after logout',()async{
+    final started=Completer<void>(),release=Completer<void>();
+    await serve((r)async{
+      started.complete();await release.future;
+      r.response.cookies.add(Cookie('session','stale-session'));
+      r.response.write(jsonEncode({'private':'OLD ACCOUNT'}));await r.response.close();
+    });
+    final response=api.cached('/wallet');await started.future;await api.clearLocal();release.complete();
+    await expectLater(response,throwsA(isA<ApiUnavailable>().having((e)=>e.cacheable,'cacheable',false)));
+    expect(api.signedIn,false);expect(api.cookies,isEmpty);expect(await SecureCache.read('wallet','/wallet'),isNull);
   });
 
 }

@@ -53,6 +53,9 @@ class StoreListing extends StatelessWidget{
  AppText((kinds[offer['kind']]??'Offre').toUpperCase(),style:const TextStyle(color:cobalt,fontSize:11,fontWeight:FontWeight.w800,letterSpacing:1)),
  AppText(offer['title'].toString(),style:const TextStyle(fontSize:22,fontWeight:FontWeight.w800,color:ink)),
  AppText(offer['description'].toString()),const SizedBox(height:8),
+ if(const ['gift','bogo','advantage'].contains(offer['benefit']))Chip(label:AppText(const {'gift':'Cadeau offert','bogo':'Un acheté, un offert','advantage':'Avantage fidélité'}[offer['benefit']]!)),
+ if((offer['conditions']??'').toString().trim().isNotEmpty)Padding(padding:const EdgeInsets.symmetric(vertical:8),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const AppText('Conditions',style:TextStyle(fontWeight:FontWeight.bold)),AppText(offer['conditions'])])),
+
  if(offer['kind']=='coupon')AppText('-'+offer['discount'].toString()+' %',style:const TextStyle(color:cobalt,fontSize:30,fontWeight:FontWeight.w900))else if(offer['new_price']!=null)Wrap(spacing:12,crossAxisAlignment:WrapCrossAlignment.center,children:[AppText(dtPrice(offer['new_price']),style:const TextStyle(fontSize:26,fontWeight:FontWeight.w900,color:cobalt)),AppText(dtPrice(offer['old_price']),style:const TextStyle(decoration:TextDecoration.lineThrough,color:muted))]),
  AppText('Du '+offer['starts'].toString()+' au '+offer['ends'].toString()+' inclus',style:const TextStyle(color:muted,fontSize:12)),if(action!=null)action!
  ]))
@@ -65,7 +68,10 @@ class StorePage extends StatefulWidget{
 class _StorePageState extends State<StorePage>{
  Map<String,dynamic>? data;String error='';bool busy=false;String filter='all';
  @override void initState(){super.initState();load();}
- Future<void> load()async{try{if(widget.preview!=null){if(mounted)setState(()=>data={'offers':<dynamic>[],'gallery':<dynamic>[],'rewards':<dynamic>[],'history':<dynamic>[],'coupons':<dynamic>[],'description':'','hours':'',...widget.preview!,'preview':true,'joined':true,'favorite':false});return;}Map<String,dynamic> d;try{d=await widget.api.cached('/stores/${widget.id}');}on ApiUnavailable{final partner=await MobileRepository(widget.api).publicPartnerById(widget.id);if(partner==null)rethrow;d=partner;}if(mounted)setState((){data=d;error='';});}catch(e){if(mounted)setState((){error=e.toString();data=null;});}}
+ Future<void> load()async{try{if(widget.preview!=null){if(mounted)setState(()=>data={'offers':<dynamic>[],'nearby':<dynamic>[],'gallery':<dynamic>[],'rewards':<dynamic>[],'history':<dynamic>[],'coupons':<dynamic>[],'description':'','hours':'',...widget.preview!,'preview':true,'joined':true,'favorite':false});return;}Map<String,dynamic> d;try{d=await widget.api.cached('/stores/${widget.id}');}on ApiUnavailable{final partner=await MobileRepository(widget.api).publicPartnerById(widget.id);if(partner==null)rethrow;d=partner;}
+ for(final key in ['offers','nearby','gallery','rewards','history','coupons']){if(d[key] is! List)d[key]=<dynamic>[];}
+ if(d['partial']==true&&widget.api.signedIn){try{final wallet=await widget.api.cached('/wallet');for(final card in wallet['cards'] as List? ?? []){if(card['shop_id']==widget.id){d={...d,'joined':true,'points':card['points'],'card_id':card['id'],'_cached':d['_cached']==true||wallet['_cached']==true};break;}}}on SessionExpired{rethrow;}on ApiUnavailable{/* Public partner information remains available. */}}
+ if(mounted)setState((){data=d;error='';});}catch(e){if(mounted)setState((){error=e.toString();data=null;});}}
  Future<void> visit(String url)async{try{await openExternal(url);}catch(e){if(mounted)setState(()=>error=e.toString());}}
  List<Widget> publicContacts(Map d){final social=socialLinks(d['social']);final website=safeWebUrl(d['website']),phone=d['phone']?.toString()??'';return [
  if(phone.isNotEmpty)ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.phone_outlined),title:AppText(phone),onTap:()=>visit('tel:'+phone)),
@@ -76,7 +82,7 @@ class _StorePageState extends State<StorePage>{
  Future<void> claim(int id)async{if(busy)return;setState(()=>busy=true);try{await widget.api.call('/storefront/coupon/claim',{'id':id});await load();}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}}
  @override Widget build(BuildContext context){final d=data;return Scaffold(appBar:AppBar(title:AppText(d?['name']??'Établissement'),actions:[if(d!=null&&d['partial']!=true&&d['preview']!=true)IconButton(tooltip:tr('Favori'),onPressed:busy?null:()async{setState(()=>busy=true);try{await widget.api.call('/stores/favorite',{'id':widget.id,'favorite':d['favorite']!=true});await load();}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}},icon:Icon(d['favorite']==true?Icons.favorite:Icons.favorite_outline)),IconButton(onPressed:load,icon:const Icon(Icons.refresh))]),body:ListView(padding:const EdgeInsets.all(18),children:[
  if(error.isNotEmpty)AppText(error,style:const TextStyle(color:Colors.red)),if(d==null&&error.isEmpty)const LinearProgressIndicator(),
- if(d!=null)...[ClipRRect(borderRadius:BorderRadius.circular(24),child:StoreImage(d['cover']??d['photo'],height:210,asset:d['photoAsset'] as String?,api:widget.api)),const SizedBox(height:16),AppText(d['name'],style:const TextStyle(fontSize:30,color:ink,fontWeight:FontWeight.w900)),AppText(establishmentLabel(d)+' · '+d['city'].toString()),if((d['description']??'').toString().isNotEmpty)AppText(d['description']),
+ if(d!=null)...[if(d['_cached']==true)const Padding(padding:EdgeInsets.only(bottom:12),child:AppText('Hors connexion · dernières données enregistrées')),ClipRRect(borderRadius:BorderRadius.circular(24),child:StoreImage(d['cover']??d['photo'],height:210,asset:d['photoAsset'] as String?,api:widget.api)),const SizedBox(height:16),AppText(d['name'],style:const TextStyle(fontSize:30,color:ink,fontWeight:FontWeight.w900)),AppText(establishmentLabel(d)+' · '+d['city'].toString()),if((d['description']??'').toString().isNotEmpty)AppText(d['description']),
  if(d['preview']==true)const ListTile(title:AppText('Prévisualisation privée'),subtitle:AppText('Votre vitrine n’est pas publiée par cette action.')),
  if(d['partial']==true)const ListTile(contentPadding:EdgeInsets.zero,leading:Icon(Icons.verified_outlined,color:cobalt),title:AppText('Établissement partenaire'),subtitle:AppText('Informations à compléter par le commerçant.')),
  ...publicContacts(d),
@@ -88,7 +94,7 @@ class _StorePageState extends State<StorePage>{
  if((d['coupons'] as List? ?? []).isNotEmpty)commercePanel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const AppText('Mes coupons',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800)),for(final q in d['coupons'])ListTile(contentPadding:EdgeInsets.zero,title:AppText(q['title']?.toString()??'Mon coupon'),subtitle:SelectableText(q['used']!=null?'Déjà utilisé':q['code'].toString()))])),
  const SizedBox(height:18),Wrap(spacing:8,children:[for(final e in {'all':'Tout',...kinds}.entries)ChoiceChip(label:AppText(e.value),selected:filter==e.key,onSelected:(_)=>setState(()=>filter=e.key))]),
  if((d['offers'] as List).isEmpty&&(d['nearby'] as List).isEmpty)const Padding(padding:EdgeInsets.all(16),child:AppText('Aucune offre en cours.')),
- for(final o in (d['offers'] as List).where((o)=>filter=='all'||o['kind']==filter))Padding(padding:const EdgeInsets.only(top:10),child:StoreListing(offer:o,action:o['kind']=='coupon'?couponAction(o,d):null)),
+ for(final o in (d['offers'] as List).where((o)=>filter=='all'||o['kind']==filter))Padding(padding:const EdgeInsets.only(top:10),child:StoreListing(offer:o,api:widget.api,action:o['kind']=='coupon'?couponAction(o,d):null)),
  if(filter=='all'||filter=='promotion')for(final o in d['nearby'])Padding(padding:const EdgeInsets.only(top:10),child:BusinessOfferTile(offer:o,subtitle:'Promotion Nearby'))
  ] ]));}
  Widget couponAction(Map o,Map d){

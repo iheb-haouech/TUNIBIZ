@@ -402,8 +402,12 @@ const translations=<String,List<String>>{
  "Ne plus recevoir les offres":["Stop receiving offers", "وقّف استقبال العروض"],
  "Ma vitrine · offres & coupons":["My storefront · offers and coupons", "واجهتي · العروض والكوبونات"],
 
+ "Points disponibles":["Available points","النقاط المتوفرة"],
+ "Le compte a changé. Actualisez la page.":["Your account changed. Refresh this screen.","الحساب تبدّل. حدّث الصفحة."],
+ "La connexion Google n’a pas abouti. Réessayez ou utilisez votre e-mail.":["Google sign-in did not complete. Try again or use your email.","الدخول بـ Google ما كملش. عاود جرّب ولا استعمل الإيميل."],
 };
 final translatedPatterns=<(RegExp,List<String>)>[
+ (RegExp(r'^Objectif (\d+)$'),['Goal {1}','الهدف {1}']),
  (RegExp(r'^Bonjour (.+)$'),['Hello {1}','مرحبا {1}']),
  (RegExp(r'^(\d+) points$'),['{1} points','{1} نقطة']),
  (RegExp(r'^\+(\d+) points de bienvenue crédités$'),['+{1} welcome points credited','تزادوا {1} نقاط ترحيب']),

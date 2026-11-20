@@ -33,7 +33,10 @@ class Api {
         client = httpClient ?? (HttpClient()..connectionTimeout = const Duration(seconds: 10));
   final Map<String, Cookie> cookies = {};
   String csrf = '';
+  int _epoch=0;
+  int get sessionEpoch=>_epoch;
   Future<void> clearLocal() async {
+    _epoch++;
     signedIn = false;
     cookies.clear();
     csrf = '';
@@ -70,6 +73,8 @@ class Api {
     if (kReleaseMode && (!serverUrl.startsWith('https://') || Uri.tryParse(serverUrl)?.host.isEmpty != false)) {
       throw StateError('Serveur HTTPS de production non configure');
     }
+    final epoch=_epoch;
+    void current(){if(epoch!=_epoch)throw const ApiUnavailable('Le compte a changé. Actualisez la page.',cacheable:false);}
     HttpClientRequest? req;
     try {
       req = await client.openUrl(body == null ? 'GET' : 'POST', Uri.parse(serverUrl + '/api' + path)).timeout(requestTimeout);
@@ -85,6 +90,7 @@ class Api {
         req.write(jsonEncode(body));
       }
       final res = await req.close().timeout(requestTimeout);
+      current();
       // Revocation remains authoritative even if a proxy replaces the JSON body.
       if (_expired(path, res.statusCode)) {
         await clearLocal();
@@ -111,12 +117,13 @@ class Api {
         }
         throw ApiUnavailable(error,cacheable:false);
       }
+      current();
       // Do not replace a saved session on network/proxy errors.
       for (final c in res.cookies) {
         if (c.maxAge == 0) { cookies.remove(c.name); } else { cookies[c.name] = c; }
       }
       if (scope != null) {
-        if (['/wallet/login', '/wallet/register', '/google/login', '/login', '/loyalty/login'].contains(path)) {await SecureCache.clear(scope);signedIn = true;}
+        if (['/wallet/login', '/wallet/register', '/google/login', '/login', '/loyalty/login'].contains(path)) {_epoch++;final loginEpoch=_epoch;await SecureCache.clear(scope);if(loginEpoch!=_epoch)throw const ApiUnavailable('Le compte a changé. Actualisez la page.',cacheable:false);signedIn = true;}
         if (['/wallet/logout', '/wallet/delete', '/logout'].contains(path) || (path == '/loyalty/logout' && scope == 'legacy')) {
           await clearLocal();
         } else if (signedIn && cookies['session'] != null) {
@@ -153,10 +160,22 @@ class Api {
     }
     return signedIn;
   }
+  Future<void> signOut(String route)async{
+    if(!const ['/wallet/logout','/logout','/loyalty/logout'].contains(route))throw ArgumentError('Logout route');
+    final revoker=Api(serverUrl:serverUrl,requestTimeout:const Duration(seconds:5));
+    revoker.csrf=csrf;revoker.cookies.addAll(cookies);
+    await clearLocal();
+    unawaited(()async{try{await revoker.call(route,{});}catch(_){/* Local sign-out is already effective. */}finally{revoker.close();}}());
+  }
   Future<Map<String,dynamic>> cached(String path)async{
     if(!path.startsWith('/')||path.startsWith('/admin'))throw ArgumentError('Cache path');
-    try{final data=await call(path);await SecureCache.put(scope,path,data);return data;}
-    on ApiUnavailable catch(error) {if(!error.cacheable)rethrow;final data=await SecureCache.read(scope,path);if(data!=null)return data;rethrow;}
+    final epoch=_epoch;
+    void current(){if(epoch!=_epoch)throw const ApiUnavailable('Le compte a changé. Actualisez la page.',cacheable:false);}
+    try{
+      final data=await call(path);current();await SecureCache.put(scope,path,data);
+      if(epoch!=_epoch){await SecureCache.clear(scope);current();}
+      return data;
+    }on ApiUnavailable catch(error){if(!error.cacheable)rethrow;current();final data=await SecureCache.read(scope,path);current();if(data!=null)return data;rethrow;}
   }
   Future<void> init() async {
     await restore();

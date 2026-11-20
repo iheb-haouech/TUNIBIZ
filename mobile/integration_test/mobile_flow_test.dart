@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:tunibiz_mobile/relationship.dart';
@@ -11,6 +12,7 @@ import 'package:tunibiz_mobile/app_language.dart';
 import 'package:tunibiz_mobile/commerce_business.dart';
 import 'package:tunibiz_mobile/checkout_scanner.dart';
 import 'package:tunibiz_mobile/store_scan.dart';
+import 'package:tunibiz_mobile/loyalty_qr.dart';
 import 'package:tunibiz_mobile/storefront.dart';
 import 'package:tunibiz_mobile/nearby.dart';
 import 'package:tunibiz_mobile/session_vault.dart';
@@ -36,7 +38,8 @@ void main(){
    await binding.takeScreenshot(name);screenshots.add(name);
   }
   Future<void> screen(Widget page)async{
-   await tester.pumpWidget(MaterialApp(theme:ThemeData(useMaterial3:true,colorSchemeSeed:const Color(0xff2563eb)),home:page));
+   await tester.pumpWidget(const SizedBox());await tester.pump();
+   await tester.pumpWidget(MaterialApp(key:UniqueKey(),theme:tunibizTheme(),home:page));
    await settle(1800);
   }
   Future<void> field(String label,String value)async{
@@ -53,6 +56,18 @@ void main(){
    await tap('العربية');expect(Directionality.of(tester.element(find.byType(LanguagePicker))),TextDirection.rtl);await snap('02-accueil-ar-rtl');
    await tap('EN');await snap('03-accueil-en');await tap('FR');
    await tap('Espace client');await waitFor(find.text('Se connecter'));await snap('04-connexion-client');
+   await tap('Créer un compte gratuit');
+   final registered='android.qa.${DateTime.now().millisecondsSinceEpoch}@example.test';
+   await field('Votre nom','Inscription Android TEST');await field('Email',registered);await field('Mot de passe','QA-Client-060!');
+   await tap('Créer mon portefeuille');await waitFor(find.text('Mes points par établissement'));await snap('04b-compte-cree');
+   expect((await client.call('/verification/status'))['verified'],false);
+   final transport=HttpClient();final req=await transport.postUrl(Uri.parse('$qa/__qa__/verification'));
+   req.headers.contentType=ContentType.json;req.headers.set('X-CSRF-Token',client.csrf);req.cookies.addAll(client.cookies.values);req.write(jsonEncode({'email':registered}));
+   final response=await req.close();expect(response.statusCode,200);final fixture=jsonDecode(await utf8.decoder.bind(response).join()) as Map;transport.close();expect((fixture['token'] as String).length,43);
+   await client.call('/verification/confirm',{'token':fixture['token']});
+   expect((await client.call('/verification/status'))['verified'],true);
+   await nav('Profil');await tap('Supprimer mon compte');await field('Confirmer le mot de passe','QA-Client-060!');
+   await tap('Supprimer definitivement');await waitFor(find.text('Se connecter'));
    await field('Email','client.qa@example.test');await field('Mot de passe','QA-Client-060!');
    await tap('Se connecter');await waitFor(find.text('Mes points par établissement'));await snap('05-client-accueil');
    expect((await client.call('/wallet'))['cards'].map((c)=>c['points']).toSet(),{50,7});
@@ -62,7 +77,7 @@ void main(){
    final cid=cards.firstWhere((c)=>c['shop_id']==4)['id'];
    await client.call('/wallet/select',{'id':cid});final loyalty=await client.call('/loyalty');
    await screen(Workspace(merchant:false,sharedApi:client,initialData:loyalty));await snap('07-carte-fidelite');
-   await tap('Présenter ma carte QR');await waitFor(find.byType(Image));await settle();await snap('08-qr-client-temporaire');
+   await tap('Présenter ma carte QR');await waitFor(find.byWidgetPredicate((w)=>w is CustomPaint&&w.painter is QrMatrixPainter));await settle();await snap('08-qr-client-temporaire');
    await screen(Home(apiOverride:client,businessApiOverride:merchant));await waitFor(find.text('Mes points par établissement'));
    await nav('Explorer');await snap('09-catalogue-partenaires');
    await screen(StorePage(api:client,id:4));await settle();await snap('10-pilote-vitrine-partielle');
@@ -70,7 +85,10 @@ void main(){
    await nav('Offres');await snap('11-offres-client');
    await nav('Profil');await snap('12-profil-client');
    await screen(Nearby(apiOverride:client));await settle();await snap('13-nearby-sans-gps');
-   await merchant.init();await merchant.call('/login',{'email':'merchant.qa@example.test','password':'QA-Merchant-060!'});
+   await screen(CommerceBusiness(apiOverride:merchant));await waitFor(find.text('Se connecter'));await snap('13b-connexion-business');
+   await field('Adresse e-mail','merchant.qa@example.test');await field('Mot de passe','QA-Merchant-060!');
+   await tap('Se connecter');await waitFor(find.text('Actions rapides'));
+
    final fixedQr=await merchant.call('/crm/store-qr');
    final qrFile=File('/sdcard/Android/data/tn.tunibiz.tunibiz_mobile/files/qa-partner.png');
    await qrFile.parent.create(recursive:true);await qrFile.writeAsBytes(base64Decode(fixedQr['png']));
@@ -97,14 +115,18 @@ void main(){
    await settle(1500);expect((await client.call('/wallet'))['cards'].firstWhere((c)=>c['shop_id']==4)['points'],75);
    expect((await client.call('/wallet'))['cards'].firstWhere((c)=>c['shop_id']==5)['points'],7);
    await nav('Promotions');await snap('21-promotions-business');
-   await tap('Créer une promotion');await snap('22-formulaire-promotion');await tap('Annuler');
-   // Actual public promotion and storefront APIs; UI rendering checked afterwards.
-   final today=DateTime.now().toIso8601String().substring(0,10),end=DateTime.now().add(const Duration(days:5)).toIso8601String().substring(0,10);
-   final promo=await merchant.call('/commerce/promotion',{'title':'Cadeau Android TEST','description':'Conditions de recette','benefit':'gift','starts':today,'ends':end,'state':'active'});
+   await tap('Créer une promotion');await snap('22-formulaire-promotion');
+   await field('Titre','Promotion Android TEST');await field('Description','Conditions de recette Android');
+   await field('Réduction (%) si applicable','20');await field('Conditions','Données TEST isolées');
+   await tap('Valider');await waitFor(find.text('APERÇU CLIENT'));await snap('22b-apercu-promotion');await tap('Enregistrer');
+   await settle(1800);
+   final offers=(await merchant.call('/commerce/business'))['promotions'] as List;
+   final promo=offers.firstWhere((o)=>o['title']=='Promotion Android TEST');
    expect(promo['id'],isNotNull);
    await nav('Vitrine');await snap('23-vitrine-business');
-   await tap('Modifier la présentation');await snap('24-formulaire-vitrine');await tap('Annuler');
-   await merchant.call('/commerce/storefront',{'description':'Vitrine modifiée par recette Android TEST','published':true});
+   await tap('Modifier la présentation');await snap('24-formulaire-vitrine');
+   await field('Description','Vitrine modifiée par recette Android TEST');await tap('Valider');await settle(1800);
+   await tap('Publier la vitrine');await settle(1800);
    expect((await client.call('/stores/4'))['description'],'Vitrine modifiée par recette Android TEST');
    await screen(StorePage(api:client,id:4));await waitFor(find.text('Vitrine modifiée par recette Android TEST'));await snap('25-vitrine-publiee');
    await screen(Home(apiOverride:client,businessApiOverride:merchant));await waitFor(find.text('Mes points par établissement'));await snap('26-solde-client-actualise');
@@ -115,7 +137,35 @@ void main(){
    await client.call('/wallet/logout',{});expect(await SessionVault.read('wallet'),isNull);
    await client.init();await client.call('/wallet/login',{'email':'client.qa@example.test','password':'QA-Client-060!'});
    expect((await client.call('/wallet'))['cards'].firstWhere((c)=>c['shop_id']==4)['points'],75);
-   binding.reportData={'screenshots':screenshots,'qr_decode':'native ML Kit image','isolated_backend':true,'real_google_login':false,'real_fcm_delivery':false};
+   await screen(Home(apiOverride:client,businessApiOverride:merchant));await waitFor(find.text('Mes points par établissement'));
+   await merchant.call('/commerce/points',{'id':cid,'points':1,'reason':'Actualisation automatique TEST','key':'auto-refresh-${DateTime.now().microsecondsSinceEpoch}'});
+   await waitFor(find.text('76 points'),seconds:45);await snap('27b-actualisation-automatique');
+   expect(await const MethodChannel('tn.tunibiz/private').invokeMethod<bool>('loyaltyNotice',{'id':'qa-validated-points','body':'Points TEST confirmés par le serveur.'}),true);
+   await client.cached('/commerce/home');await client.cached('/wallet');await client.cached('/commerce/profile');
+   await snap('28-offline-prepare');
+   const stagePath='/sdcard/Android/data/tn.tunibiz.tunibiz_mobile/files/qa-network';
+   Future<void> networkStage(String phase)async{
+    await File(stagePath).writeAsString(phase);
+    for(var i=0;i<60;i++){try{if(await File('$stagePath-ack').readAsString()==phase)return;}catch(_){}await Future<void>.delayed(const Duration(milliseconds:250));}
+    throw TestFailure('ADB network stage did not complete: $phase');
+   }
+   await networkStage('offline');
+   final offline=Api(scope:'wallet',serverUrl:qa,requestTimeout:const Duration(seconds:3));
+   offline.signedIn=true;offline.restored=true;offline.cookies.addAll(client.cookies);
+   try{
+    await screen(Home(apiOverride:offline,businessApiOverride:merchant));
+    await waitFor(find.text('Hors connexion · dernières données enregistrées'),seconds:25);
+    await snap('29-client-hors-connexion');
+    await tester.tap(find.byType(FloatingActionButton));await settle();
+    expect(find.text('Connectez-vous pour enregistrer une opération.'),findsOneWidget);
+    await nav('Profil');await tap('Déconnexion');await waitFor(find.text('Se connecter'));
+    expect(await SessionVault.read('wallet'),isNull);await snap('30-deconnexion-client-hors-connexion');
+    await screen(CommerceBusiness(apiOverride:merchant));await waitFor(find.text('Hors connexion · dernières données enregistrées'),seconds:40);
+    await snap('31-business-hors-connexion');await nav('Plus');await tap('Paramètres');await tap('Déconnexion');
+    await waitFor(find.text('Se connecter'));expect(await SessionVault.read('merchant'),isNull);await snap('32-deconnexion-business-hors-connexion');
+
+   }finally{await networkStage('online');offline.close();}
+   binding.reportData??={};binding.reportData!.addAll({'capture_names':screenshots,'qr_decode':'native ML Kit image','isolated_backend':true,'real_google_login':false,'real_fcm_delivery':false,'native_notification':true,'automatic_balance_refresh':true,'offline_logout_both_roles':true});
   }finally{
    await tester.pumpWidget(const SizedBox());await settle(100);
    client.close();merchant.close();other.close();

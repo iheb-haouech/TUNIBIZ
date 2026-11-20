@@ -26,10 +26,11 @@ const navy=Color(0xFF091628), blue=Color(0xFF2563EB), teal=Color(0xFF2DD4BF);
 String money(dynamic v)=>((v as num)/1000).toStringAsFixed(3)+' DT';
 String requestKey()=>List.generate(24,(_)=>Random.secure().nextInt(256).toRadixString(16).padLeft(2,'0')).join();
 Future<void> main()async{WidgetsFlutterBinding.ensureInitialized();await AppLanguage.restore();runApp(const Tunibiz());}
+ThemeData tunibizTheme()=>ThemeData(useMaterial3:true,colorScheme:ColorScheme.fromSeed(seedColor:blue),scaffoldBackgroundColor:const Color(0xFFF5F7FB),inputDecorationTheme:InputDecorationTheme(border:OutlineInputBorder(borderRadius:BorderRadius.circular(14)),filled:true,fillColor:Colors.white),filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(minimumSize:const Size(48,50),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)))),appBarTheme:const AppBarTheme(backgroundColor:navy,foregroundColor:Colors.white));
 class Tunibiz extends StatelessWidget{
  final Api? clientApiOverride,businessApiOverride;
  const Tunibiz({super.key,this.clientApiOverride,this.businessApiOverride});
- @override Widget build(BuildContext context)=>ValueListenableBuilder<Locale>(valueListenable:AppLanguage.locale,builder:(_,locale,__)=>MaterialApp(title:'TUNIBIZ',debugShowCheckedModeBanner:false,locale:locale,supportedLocales:const [Locale('fr'),Locale('ar'),Locale('en')],localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],theme:ThemeData(useMaterial3:true,colorScheme:ColorScheme.fromSeed(seedColor:blue),scaffoldBackgroundColor:const Color(0xFFF5F7FB),inputDecorationTheme:InputDecorationTheme(border:OutlineInputBorder(borderRadius:BorderRadius.circular(14)),filled:true,fillColor:Colors.white),filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(minimumSize:const Size(48,50),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)))),appBarTheme:const AppBarTheme(backgroundColor:navy,foregroundColor:Colors.white)),home:LaunchScreen(client:()=>Home(apiOverride:clientApiOverride,businessApiOverride:businessApiOverride),business:()=>CommerceBusiness(apiOverride:businessApiOverride))));
+ @override Widget build(BuildContext context)=>ValueListenableBuilder<Locale>(valueListenable:AppLanguage.locale,builder:(_,locale,__)=>MaterialApp(title:'TUNIBIZ',debugShowCheckedModeBanner:false,locale:locale,supportedLocales:const [Locale('fr'),Locale('ar'),Locale('en')],localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],theme:tunibizTheme(),home:LaunchScreen(client:()=>Home(apiOverride:clientApiOverride,businessApiOverride:businessApiOverride),business:()=>CommerceBusiness(apiOverride:businessApiOverride))));
 }
 class Home extends StatelessWidget{
  final Api? apiOverride,businessApiOverride;
@@ -130,7 +131,7 @@ class _WorkspaceState extends State<Workspace> with WidgetsBindingObserver{
  BusinessNearby(api:api,onCreate:nearbyCreate,onLocation:nearbyLocation,onStop:nearbyStop),
  ]];
  List<Widget> cardView(Map<String,dynamic> d){final c=d['customer'];final points=(c['points'] as num).toInt();final rewards=(d['rewards'] as List).toList()..sort((a,b)=>(a['cost'] as num).compareTo(b['cost'] as num));final next=rewards.where((r)=>(r['cost'] as num)>points).toList();
- final goal=next.isNotEmpty?(next.first['cost'] as num).toInt():rewards.isNotEmpty?(rewards.last['cost'] as num).toInt():100;
+ final goal=next.isNotEmpty?(next.first['cost'] as num).toInt():rewards.isNotEmpty?(rewards.last['cost'] as num).toInt():0;
  final description=next.isNotEmpty?'Encore '+(goal-points).toString()+' points pour votre prochaine récompense.':rewards.isEmpty?'Vos récompenses apparaîtront ici dès leur publication.':'Vous avez atteint un palier de récompense.';
  final rewardsKey=GlobalKey();
  return [
