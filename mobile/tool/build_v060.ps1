@@ -17,8 +17,16 @@ $env:JAVA_HOME='C:\Program Files\Microsoft\jdk-21.0.11.10-hotspot'
 New-Item -ItemType Directory -Force $work | Out-Null
 & robocopy $src $work /E /XD build .dart_tool .gradle /XF local.properties key.properties /NFL /NDL /NJH /NJS | Out-Null
 if($LASTEXITCODE -gt 7){throw 'Source copy failed'}
-# Bound memory/parallelism on the 4-core SPYKY; source behavior is unchanged.
+# Bound memory/parallelism on SPYKY; source behavior is unchanged.
 [IO.File]::WriteAllText("$work\android\gradle.properties","org.gradle.jvmargs=-Xmx3G -XX:MaxMetaspaceSize=1G -XX:ReservedCodeCacheSize=256m`norg.gradle.workers.max=1`norg.gradle.parallel=false`nandroid.useAndroidX=true`nandroid.newDsl=false`nandroid.builtInKotlin=false`n",(New-Object Text.UTF8Encoding($false)))
+# Do not carry the instrumentation plugin/registrant from the QA APK into release.
+# The source retains integration_test; only the disposable release work copy excludes it.
+if($Mode -eq 'release'){
+ $specPath="$work\pubspec.yaml"
+ $spec=[IO.File]::ReadAllText($specPath) -replace '(?m)^  integration_test:\r?\n    sdk: flutter\r?\n',''
+ [IO.File]::WriteAllText($specPath,$spec,(New-Object Text.UTF8Encoding($false)))
+ Remove-Item "$work\.flutter-plugins-dependencies","$work\android\app\src\main\java\io\flutter\plugins\GeneratedPluginRegistrant.java" -Force -ErrorAction SilentlyContinue
+}
 $firebase=Get-Content "$dev\firebase-google-services.json" -Raw | ConvertFrom-Json
 $fc=$firebase.client | Where-Object {$_.client_info.android_client_info.package_name -eq 'tn.tunibiz.tunibiz_mobile'} | Select-Object -First 1
 if($firebase.project_info.project_id -ne 'tunibiz-782f0' -or !$fc){throw 'Firebase package/project mismatch'}
