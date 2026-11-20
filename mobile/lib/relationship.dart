@@ -27,14 +27,16 @@ String money(dynamic v)=>((v as num)/1000).toStringAsFixed(3)+' DT';
 String requestKey()=>List.generate(24,(_)=>Random.secure().nextInt(256).toRadixString(16).padLeft(2,'0')).join();
 Future<void> main()async{WidgetsFlutterBinding.ensureInitialized();await AppLanguage.restore();runApp(const Tunibiz());}
 class Tunibiz extends StatelessWidget{
- const Tunibiz({super.key});
- @override Widget build(BuildContext context)=>ValueListenableBuilder<Locale>(valueListenable:AppLanguage.locale,builder:(_,locale,__)=>MaterialApp(title:'TUNIBIZ',debugShowCheckedModeBanner:false,locale:locale,supportedLocales:const [Locale('fr'),Locale('ar'),Locale('en')],localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],theme:ThemeData(useMaterial3:true,colorScheme:ColorScheme.fromSeed(seedColor:blue),scaffoldBackgroundColor:const Color(0xFFF5F7FB),inputDecorationTheme:InputDecorationTheme(border:OutlineInputBorder(borderRadius:BorderRadius.circular(14)),filled:true,fillColor:Colors.white),filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(minimumSize:const Size(48,50),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)))),appBarTheme:const AppBarTheme(backgroundColor:navy,foregroundColor:Colors.white)),home:LaunchScreen(client:()=>const Home(),business:()=>const CommerceBusiness())));
+ final Api? clientApiOverride,businessApiOverride;
+ const Tunibiz({super.key,this.clientApiOverride,this.businessApiOverride});
+ @override Widget build(BuildContext context)=>ValueListenableBuilder<Locale>(valueListenable:AppLanguage.locale,builder:(_,locale,__)=>MaterialApp(title:'TUNIBIZ',debugShowCheckedModeBanner:false,locale:locale,supportedLocales:const [Locale('fr'),Locale('ar'),Locale('en')],localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],theme:ThemeData(useMaterial3:true,colorScheme:ColorScheme.fromSeed(seedColor:blue),scaffoldBackgroundColor:const Color(0xFFF5F7FB),inputDecorationTheme:InputDecorationTheme(border:OutlineInputBorder(borderRadius:BorderRadius.circular(14)),filled:true,fillColor:Colors.white),filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(minimumSize:const Size(48,50),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)))),appBarTheme:const AppBarTheme(backgroundColor:navy,foregroundColor:Colors.white)),home:LaunchScreen(client:()=>Home(apiOverride:clientApiOverride,businessApiOverride:businessApiOverride),business:()=>CommerceBusiness(apiOverride:businessApiOverride))));
 }
 class Home extends StatelessWidget{
- const Home({super.key});
+ final Api? apiOverride,businessApiOverride;
+ const Home({super.key,this.apiOverride,this.businessApiOverride});
  @override Widget build(BuildContext context)=>CommerceClient(
- cardBuilder:(api,data)=>Workspace(merchant:false,sharedApi:api,initialData:data),
- businessBuilder:()=>const CommerceBusiness());
+ apiOverride:apiOverride,cardBuilder:(api,data)=>Workspace(merchant:false,sharedApi:api,initialData:data),
+ businessBuilder:()=>CommerceBusiness(apiOverride:businessApiOverride));
 }
 class Workspace extends StatefulWidget{final bool merchant;final Api? sharedApi;final Map<String,dynamic>? initialData;const Workspace({super.key,required this.merchant,this.sharedApi,this.initialData});@override State<Workspace> createState()=>_WorkspaceState();}
 class _WorkspaceState extends State<Workspace>{

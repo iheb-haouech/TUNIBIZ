@@ -8,8 +8,12 @@ import 'checkout_scanner.dart';
 
 String? storeSlug(String value){
  final u=Uri.tryParse(value.trim());
- if(u==null||u.scheme!='https'||u.host!='ihebhaouech.pythonanywhere.com'||u.hasPort||u.userInfo.isNotEmpty||u.pathSegments.length!=2||u.pathSegments.first!='join')return null;
- final s=u.pathSegments.last;return RegExp(r'^[a-zA-Z0-9_-]{1,80}$').hasMatch(s)?s:null;
+ if(u==null||u.scheme!='https'||u.host!='ihebhaouech.pythonanywhere.com'||u.hasPort||u.userInfo.isNotEmpty||u.hasFragment)return null;
+ final String? slug;
+ if(u.pathSegments.length==2&&u.pathSegments.first=='join'){slug=u.pathSegments.last;}
+ else if(u.path=='/wallet'&&u.queryParametersAll.length==1&&u.queryParametersAll['store']?.length==1){slug=u.queryParameters['store'];}
+ else{return null;}
+ return slug!=null&&RegExp(r'^[a-zA-Z0-9_-]{1,80}$').hasMatch(slug)?slug:null;
 }
 Future<String?> scanStore(BuildContext context)async{
  final value=await Navigator.push<String>(context,MaterialPageRoute(builder:(_)=>CheckoutScanner(accept:(v)=>storeSlug(v)!=null,title:'Scanner le QR du commerce')));

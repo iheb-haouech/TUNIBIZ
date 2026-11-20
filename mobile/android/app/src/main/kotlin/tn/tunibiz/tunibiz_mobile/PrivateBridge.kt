@@ -53,6 +53,11 @@ class PrivateBridge(private val context: Context) {
       if(!web&&!phone)result.error("url","Lien invalide",null)
       else{context.startActivity(Intent(Intent.ACTION_VIEW,u).addCategory(Intent.CATEGORY_BROWSABLE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));result.success(true)}
      }
+     "prepareQrImage"->{
+      val raw=call.argument<String>("image")?:"";require(raw.length<=2000000)
+      val bytes=Base64.decode(raw,Base64.DEFAULT);require(bytes.size>8)
+      val file=File(context.cacheDir,"qr-image-input.jpg");file.writeBytes(bytes);result.success(file.absolutePath)
+     }
      "shareQr","saveQr"->{
       val raw=call.argument<String>("png")?:"";require(raw.length<=1500000)
       val bytes=Base64.decode(raw,Base64.DEFAULT);require(bytes.size>=8&&bytes[0]==0x89.toByte()&&bytes[1]==0x50.toByte())

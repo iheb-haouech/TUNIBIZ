@@ -29,10 +29,10 @@ class AppInputDecoration extends InputDecoration {
  @override String? get helperText=>sourceHelper==null?null:tr(sourceHelper);
  @override String? get errorText=>sourceError==null?null:tr(sourceError);
 }
-class AppNavigationDestination extends NavigationDestination {
- final String sourceLabel;
- const AppNavigationDestination({super.key,required super.icon,super.selectedIcon,required String label}):sourceLabel=label,super(label:label);
- @override String get label=>tr(sourceLabel);
+class AppNavigationDestination extends StatelessWidget {
+ final String label;final Widget icon;final Widget? selectedIcon;
+ const AppNavigationDestination({super.key,required this.icon,this.selectedIcon,required this.label});
+ @override Widget build(BuildContext context){Localizations.localeOf(context);return NavigationDestination(icon:icon,selectedIcon:selectedIcon,label:tr(label));}
 }
 class LanguagePicker extends StatelessWidget {
  const LanguagePicker({super.key});

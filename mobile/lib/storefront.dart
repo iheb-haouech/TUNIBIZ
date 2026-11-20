@@ -17,13 +17,13 @@ String dtPrice(dynamic n)=>((n as num)/1000).toStringAsFixed(3)+' DT';
 const kinds={'promotion':'Promotion','pack':'Pack','coupon':'Coupon'};
 String dayNow()=>DateTime.now().toUtc().add(const Duration(hours:1)).toIso8601String().substring(0,10);
 class StoreImage extends StatelessWidget{
- final Object? id;final double height;final String? asset;
- const StoreImage(this.id,{super.key,this.height=160,this.asset});
+ final Object? id;final double height;final String? asset;final Api? api;
+ const StoreImage(this.id,{super.key,this.height=160,this.asset,this.api});
  @override Widget build(BuildContext context){
  final fallback=Container(height:height,color:ink,alignment:Alignment.center,child:const Icon(Icons.storefront_outlined,color:mint,size:45));
  if(asset!=null)return Image.asset(asset!,height:height,width:double.infinity,fit:BoxFit.cover,errorBuilder:(_,__,___)=>fallback);
  if(id is! String||!RegExp(r'^[a-f0-9]{32}$').hasMatch(id as String))return fallback;
- return Image.network(baseUrl+'/media/store/'+(id as String),height:height,width:double.infinity,fit:BoxFit.cover,errorBuilder:(_,__,___)=>fallback);
+ return Image.network((api?.serverUrl??baseUrl)+'/media/store/'+(id as String),headers:api==null?null:{'Cookie':api!.cookies.values.map((c)=>'${c.name}=${c.value}').join('; ')},cacheWidth:1000,height:height,width:double.infinity,fit:BoxFit.cover,errorBuilder:(_,__,___)=>fallback);
  }
 }
 class StoresPage extends StatefulWidget{
@@ -46,10 +46,10 @@ class _StoresPageState extends State<StoresPage>{
  ]));
 }
 class StoreListing extends StatelessWidget{
- final Map offer;final Widget? action;
- const StoreListing({super.key,required this.offer,this.action});
+ final Map offer;final Widget? action;final Api? api;
+ const StoreListing({super.key,required this.offer,this.action,this.api});
  @override Widget build(BuildContext context)=>Card(clipBehavior:Clip.antiAlias,color:Colors.white,child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
- StoreImage(offer['photo'],height:155),Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+ StoreImage(offer['photo'],height:155,api:api),Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
  AppText((kinds[offer['kind']]??'Offre').toUpperCase(),style:const TextStyle(color:cobalt,fontSize:11,fontWeight:FontWeight.w800,letterSpacing:1)),
  AppText(offer['title'].toString(),style:const TextStyle(fontSize:22,fontWeight:FontWeight.w800,color:ink)),
  AppText(offer['description'].toString()),const SizedBox(height:8),
@@ -59,13 +59,13 @@ class StoreListing extends StatelessWidget{
  ]));
 }
 class StorePage extends StatefulWidget{
- final Api api;final int id;const StorePage({super.key,required this.api,required this.id});
+ final Api api;final int id;final Map<String,dynamic>? preview;const StorePage({super.key,required this.api,required this.id,this.preview});
  @override State<StorePage> createState()=>_StorePageState();
 }
 class _StorePageState extends State<StorePage>{
  Map<String,dynamic>? data;String error='';bool busy=false;String filter='all';
  @override void initState(){super.initState();load();}
- Future<void> load()async{try{Map<String,dynamic> d;try{d=await widget.api.cached('/stores/${widget.id}');}on ApiUnavailable{final partner=await MobileRepository(widget.api).publicPartnerById(widget.id);if(partner==null)rethrow;d=partner;}if(mounted)setState((){data=d;error='';});}catch(e){if(mounted)setState((){error=e.toString();data=null;});}}
+ Future<void> load()async{try{if(widget.preview!=null){if(mounted)setState(()=>data={'offers':<dynamic>[],'gallery':<dynamic>[],'rewards':<dynamic>[],'history':<dynamic>[],'coupons':<dynamic>[],'description':'','hours':'',...widget.preview!,'preview':true,'joined':true,'favorite':false});return;}Map<String,dynamic> d;try{d=await widget.api.cached('/stores/${widget.id}');}on ApiUnavailable{final partner=await MobileRepository(widget.api).publicPartnerById(widget.id);if(partner==null)rethrow;d=partner;}if(mounted)setState((){data=d;error='';});}catch(e){if(mounted)setState((){error=e.toString();data=null;});}}
  Future<void> visit(String url)async{try{await openExternal(url);}catch(e){if(mounted)setState(()=>error=e.toString());}}
  List<Widget> publicContacts(Map d){final social=socialLinks(d['social']);final website=safeWebUrl(d['website']),phone=d['phone']?.toString()??'';return [
  if(phone.isNotEmpty)ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.phone_outlined),title:AppText(phone),onTap:()=>visit('tel:'+phone)),
@@ -74,16 +74,17 @@ class _StorePageState extends State<StorePage>{
  Future<void> useCode()async{final p=await commerceForm(context,'Code promotionnel de cet établissement',[const CommerceField('code','Code TB-…')]);if(p==null)return;setState(()=>busy=true);try{await widget.api.call('/commerce/code/use',{'shop_id':widget.id,'code':p['code']!.trim().toUpperCase()});await load();}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> join()async{if(data?['partial']==true){final yes=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const AppText('Rejoindre la fidélité'),content:const AppText('Votre compte TUNIBIZ identifie votre fidélité. Les points d’achat sont validés par le commerçant.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const AppText('Annuler')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const AppText('Confirmer'))]));if(yes!=true||!mounted)return;setState(()=>busy=true);try{final result=await widget.api.call('/wallet/store-scan',{'slug':data!['slug']});if(mounted)await showScanConfirmation(context,data!['name'].toString(),result);}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}return;}final p=await commerceForm(context,'Rejoindre ce programme',[const CommerceField('invite','Invitation personnelle (si une fiche existe)',optional:true),const CommerceField('marketing','Promotions de ce commerce',value:'no',choices:{'no':'Je garde les communications désactivées','yes':'J’accepte les offres de ce commerce'})],note:'Vous acceptez de rattacher votre fidélité à ce commerce. Confirmez votre email et ajoutez votre téléphone dans Profil avant de continuer.');if(p==null)return;setState(()=>busy=true);try{await widget.api.call('/commerce/join',{'shop_id':widget.id,'consent':true,'invite':p['invite']!.isEmpty?null:p['invite'],'marketing':p['marketing']=='yes'});await load();}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> claim(int id)async{if(busy)return;setState(()=>busy=true);try{await widget.api.call('/storefront/coupon/claim',{'id':id});await load();}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}}
- @override Widget build(BuildContext context){final d=data;return Scaffold(appBar:AppBar(title:AppText(d?['name']??'Établissement'),actions:[if(d!=null&&d['partial']!=true)IconButton(tooltip:tr('Favori'),onPressed:busy?null:()async{setState(()=>busy=true);try{await widget.api.call('/stores/favorite',{'id':widget.id,'favorite':d['favorite']!=true});await load();}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}},icon:Icon(d['favorite']==true?Icons.favorite:Icons.favorite_outline)),IconButton(onPressed:load,icon:const Icon(Icons.refresh))]),body:ListView(padding:const EdgeInsets.all(18),children:[
+ @override Widget build(BuildContext context){final d=data;return Scaffold(appBar:AppBar(title:AppText(d?['name']??'Établissement'),actions:[if(d!=null&&d['partial']!=true&&d['preview']!=true)IconButton(tooltip:tr('Favori'),onPressed:busy?null:()async{setState(()=>busy=true);try{await widget.api.call('/stores/favorite',{'id':widget.id,'favorite':d['favorite']!=true});await load();}catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}},icon:Icon(d['favorite']==true?Icons.favorite:Icons.favorite_outline)),IconButton(onPressed:load,icon:const Icon(Icons.refresh))]),body:ListView(padding:const EdgeInsets.all(18),children:[
  if(error.isNotEmpty)AppText(error,style:const TextStyle(color:Colors.red)),if(d==null&&error.isEmpty)const LinearProgressIndicator(),
- if(d!=null)...[ClipRRect(borderRadius:BorderRadius.circular(24),child:StoreImage(d['cover'],height:210,asset:d['photoAsset'] as String?)),const SizedBox(height:16),AppText(d['name'],style:const TextStyle(fontSize:30,color:ink,fontWeight:FontWeight.w900)),AppText(establishmentLabel(d)+' · '+d['city'].toString()),if((d['description']??'').toString().isNotEmpty)AppText(d['description']),
+ if(d!=null)...[ClipRRect(borderRadius:BorderRadius.circular(24),child:StoreImage(d['cover'],height:210,asset:d['photoAsset'] as String?,api:widget.api)),const SizedBox(height:16),AppText(d['name'],style:const TextStyle(fontSize:30,color:ink,fontWeight:FontWeight.w900)),AppText(establishmentLabel(d)+' · '+d['city'].toString()),if((d['description']??'').toString().isNotEmpty)AppText(d['description']),
+ if(d['preview']==true)const ListTile(title:AppText('Prévisualisation privée'),subtitle:AppText('Votre vitrine n’est pas publiée par cette action.')),
  if(d['partial']==true)const ListTile(contentPadding:EdgeInsets.zero,leading:Icon(Icons.verified_outlined,color:cobalt),title:AppText('Établissement partenaire'),subtitle:AppText('Informations à compléter par le commerçant.')),
  ...publicContacts(d),
  if((d['address']??'').toString().isNotEmpty)ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.location_on_outlined),title:AppText(d['address'].toString())),
  if((d['hours']??'').toString().isNotEmpty)ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.schedule),title:AppText(d['hours'].toString())),
  if(d['points']!=null)Card(child:ListTile(leading:const Icon(Icons.loyalty,color:cobalt),title:AppText('${d['points']} points dans ce commerce'),subtitle:AppText((d['rewards'] as List? ?? []).map((r)=>'${r['title']} · ${r['cost']} pts').join(' · ')))),
  if((d['gallery'] as List? ?? []).isNotEmpty)SizedBox(height:145,child:ListView(scrollDirection:Axis.horizontal,children:[for(final id in d['gallery'])Padding(padding:const EdgeInsetsDirectional.only(end:8),child:SizedBox(width:210,child:ClipRRect(borderRadius:BorderRadius.circular(16),child:StoreImage(id,height:145))))])),
- if(d['joined']!=true)FilledButton.icon(onPressed:busy?null:join,icon:const Icon(Icons.loyalty_outlined),label:const AppText('Rejoindre la fidélité')),if(d['partial']!=true)OutlinedButton.icon(onPressed:busy?null:useCode,icon:const Icon(Icons.local_offer_outlined),label:const AppText('Utiliser un code promotionnel ici')),if((d['history'] as List? ?? []).isNotEmpty)ExpansionTile(title:const AppText('Mon historique'),children:[for(final h in d['history'])ListTile(title:AppText(h['label']),subtitle:AppText(h['created']),trailing:AppText('${h['points']} pts'))]),
+ if(d['joined']!=true)FilledButton.icon(onPressed:busy?null:join,icon:const Icon(Icons.loyalty_outlined),label:const AppText('Rejoindre la fidélité')),if(d['partial']!=true&&d['preview']!=true)OutlinedButton.icon(onPressed:busy?null:useCode,icon:const Icon(Icons.local_offer_outlined),label:const AppText('Utiliser un code promotionnel ici')),if((d['history'] as List? ?? []).isNotEmpty)ExpansionTile(title:const AppText('Mon historique'),children:[for(final h in d['history'])ListTile(title:AppText(h['label']),subtitle:AppText(h['created']),trailing:AppText('${h['points']} pts'))]),
  if((d['coupons'] as List? ?? []).isNotEmpty)commercePanel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const AppText('Mes coupons',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800)),for(final q in d['coupons'])ListTile(contentPadding:EdgeInsets.zero,title:AppText(q['title']?.toString()??'Mon coupon'),subtitle:SelectableText(q['used']!=null?'Déjà utilisé':q['code'].toString()))])),
  const SizedBox(height:18),Wrap(spacing:8,children:[for(final e in {'all':'Tout',...kinds}.entries)ChoiceChip(label:AppText(e.value),selected:filter==e.key,onSelected:(_)=>setState(()=>filter=e.key))]),
  if((d['offers'] as List).isEmpty&&(d['nearby'] as List).isEmpty)const Padding(padding:EdgeInsets.all(16),child:AppText('Aucune offre en cours.')),

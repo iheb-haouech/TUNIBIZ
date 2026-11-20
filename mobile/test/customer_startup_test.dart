@@ -22,11 +22,11 @@ void main(){
  final api=ResumeApi();addTearDown(api.close);
  await tester.pumpWidget(MaterialApp(home:ConsumerWallet(apiOverride:api,scanOnOpen:true,scannerOverride:(_)async=>'shop-qa',cardBuilder:(_,__)=>const SizedBox())));
  await tester.pumpAndSettle();
- expect(find.text('+3 points de bienvenue'),findsOneWidget);
+ expect(find.text('+3 points de bienvenue crédités'),findsOneWidget);
  expect(api.scans,1);expect(api.requests.contains('/wallet/login'),isFalse);
  await tester.tap(find.text('Terminé'));await tester.pumpAndSettle();
  await tester.ensureVisible(find.text('Scanner le QR du commerce'));await tester.tap(find.text('Scanner le QR du commerce'));await tester.pumpAndSettle();
- expect(find.text('Achat en attente de validation'),findsOneWidget);expect(api.scans,2);
+ expect(find.text('Scan enregistré · points en attente'),findsOneWidget);expect(api.scans,2);
  await tester.tap(find.text('Terminé'));await tester.pumpAndSettle();
  expect(find.text('Bonjour QA Client'),findsOneWidget);expect(tester.takeException(),isNull);
  await tester.pumpWidget(const SizedBox());await tester.pumpAndSettle();

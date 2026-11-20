@@ -7,7 +7,7 @@ void main(){
  expect(declared,'$currentVersion+$currentVersionCode');
  });
  test('only newer official release metadata accepted',(){
- final r=<String,dynamic>{'version':'0.5.3','code':10,'url':'https://github.com/iheb-haouech/TUNIBIZ/releases/download/v0.5.3/TUNIBIZ-v0.5.3.apk','sha256':List.filled(64,'a').join(),'notes':'test'};
+ final r=<String,dynamic>{'version':'0.6.1','code':61,'url':'https://github.com/iheb-haouech/TUNIBIZ/releases/download/v0.6.1/TUNIBIZ-v0.6.1.apk','sha256':List.filled(64,'a').join(),'notes':'test'};
  expect(validRelease(r),isTrue);
  expect(validRelease({...r,'code':currentVersionCode}),isFalse);
  expect(validRelease({...r,'url':'https://evil.example/evil.apk'}),isFalse);
