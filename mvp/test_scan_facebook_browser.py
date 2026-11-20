@@ -35,7 +35,7 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
    def context(cli=None):
     ctx=browser.new_context(viewport={'width':390,'height':844})
     if cli:ctx.add_cookies([{'name':'session','value':cli.get_cookie('session').value,'url':origin}])
-    ctx.add_init_script("localStorage.setItem('tn_consent','no')")
+    ctx.add_init_script("localStorage.setItem('tn_analytics','no')")
     return ctx
    # Merchant configures one stored destination, without changing the printed QR.
    ctx=context(merchant);page=ctx.new_page();page.goto(origin+'/merchant-qr');page.locator('[name=facebook_url]').fill('https://www.facebook.com/qa-first');page.get_by_role('button',name='Enregistrer le lien Facebook').click();expect(page.get_by_text('Lien enregistré. Le QR imprimé reste le même.')).to_be_visible();ctx.close()

@@ -11,7 +11,7 @@ String? facebookDestination(dynamic value) {
 }
 
 Future<void> showScanConfirmation(BuildContext context,String shop,Map result,{Future<void> Function(String)? openFacebook}) => showModalBottomSheet<void>(
- context:context,useSafeArea:true,showDragHandle:true,
+ context:context,useSafeArea:true,showDragHandle:true,isScrollControlled:true,
  builder:(_)=>ScanConfirmation(shop:shop,result:result,openFacebook:openFacebook),
 );
 
@@ -45,7 +45,7 @@ class _ScanConfirmationState extends State<ScanConfirmation> {
    const SizedBox(height:8),Text(welcome?(points>0?'Vos points sont disponibles dans votre portefeuille.':'Le bonus de bienvenue est attribué une seule fois par compte et par commerce.'):'Le commerçant doit valider votre achat avant de créditer les points.',textAlign:TextAlign.center),
    if(target!=null)...[const SizedBox(height:16),Text(opened?'Page Facebook ouverte.':error.isNotEmpty?error:'Ouverture de la page Facebook dans 3 secondes…',textAlign:TextAlign.center),
     FilledButton.icon(onPressed:opening?null:(){opened=false;visit();},icon:const Icon(Icons.open_in_new),label:const Text('Ouvrir Facebook'))],
-   TextButton(onPressed:()=>Navigator.pop(context),child:Text(target==null?'Terminé':'Rester dans TUNIBIZ')),
+   TextButton(onPressed:(){timer?.cancel();Navigator.pop(context);},child:Text(target==null?'Terminé':'Rester dans TUNIBIZ')),
   ])));
  }
 }
