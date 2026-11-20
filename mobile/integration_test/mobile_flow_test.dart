@@ -31,14 +31,20 @@ void main(){
    throw TestFailure('Not displayed: $f');
   }
   Future<void> tap(String text)async{
-   final f=find.text(text).last;await waitFor(f);await tester.ensureVisible(f);await tester.pump(const Duration(milliseconds:200));await tester.tap(f);await settle();
+   final f=find.text(text);
+   if(f.evaluate().isEmpty){await tester.scrollUntilVisible(f,250,scrollable:find.byType(Scrollable).hitTestable().last,maxScrolls:25);}
+   await waitFor(f);await tester.ensureVisible(f.last);await tester.pump(const Duration(milliseconds:200));await tester.tap(f.last);await settle();
   }
   Future<void> snap(String name)async{
    await tester.pump(const Duration(milliseconds:500));
    final shot=await binding.takeScreenshot(name);
-   final file=File('/sdcard/Android/data/tn.tunibiz.tunibiz_mobile/files/screenshots/$name.png');
+   final file=File('/data/user/0/tn.tunibiz.tunibiz_mobile/cache/qa/screenshots/$name.png');
    await file.parent.create(recursive:true);await file.writeAsBytes(shot);
    binding.reportData?.remove('screenshots');screenshots.add(name);binding.reportData!['capture_names']=screenshots;
+   const capture='/data/user/0/tn.tunibiz.tunibiz_mobile/cache/qa/qa-capture';
+   await File(capture).writeAsString(name);
+   for(var i=0;i<120;i++){if(await File('$capture-$name-ack').exists())return;await Future<void>.delayed(const Duration(milliseconds:250));}
+   throw TestFailure('Host did not save screenshot: $name');
   }
   Future<void> screen(Widget page)async{
    await tester.pumpWidget(const SizedBox());await tester.pump();
@@ -93,7 +99,7 @@ void main(){
    await tap('Se connecter');await waitFor(find.byType(NavigationBar));
 
    final fixedQr=await merchant.call('/crm/store-qr');
-   final qrFile=File('/sdcard/Android/data/tn.tunibiz.tunibiz_mobile/files/qa-partner.png');
+   final qrFile=File('/data/user/0/tn.tunibiz.tunibiz_mobile/cache/qa/qa-partner.png');
    await qrFile.parent.create(recursive:true);await qrFile.writeAsBytes(base64Decode(fixedQr['png']));
    await screen(Home(apiOverride:client,businessApiOverride:merchant));await waitFor(find.text('Mes points par établissement'));
    await tester.tap(find.byType(FloatingActionButton));await waitFor(find.byType(CheckoutScanner));await settle(1200);await snap('14-camera-scanner');
@@ -146,10 +152,11 @@ void main(){
    expect(await const MethodChannel('tn.tunibiz/private').invokeMethod<bool>('loyaltyNotice',{'id':'qa-validated-points','body':'Points TEST confirmés par le serveur.'}),true);
    await client.cached('/commerce/home');await client.cached('/wallet');await client.cached('/commerce/profile');
    await snap('28-offline-prepare');
-   const stagePath='/sdcard/Android/data/tn.tunibiz.tunibiz_mobile/files/qa-network';
+   const stagePath='/data/user/0/tn.tunibiz.tunibiz_mobile/cache/qa/qa-network';
    Future<void> networkStage(String phase)async{
+    final ack=File('$stagePath-$phase-ack');if(await ack.exists())await ack.delete();
     await File(stagePath).writeAsString(phase);
-    for(var i=0;i<60;i++){try{if(await File('$stagePath-ack').readAsString()==phase)return;}catch(_){}await Future<void>.delayed(const Duration(milliseconds:250));}
+    for(var i=0;i<60;i++){try{if(await ack.exists())return;}catch(_){}await Future<void>.delayed(const Duration(milliseconds:250));}
     throw TestFailure('ADB network stage did not complete: $phase');
    }
    await networkStage('offline');
