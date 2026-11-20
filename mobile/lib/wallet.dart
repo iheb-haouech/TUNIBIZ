@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'push_preferences.dart';
 import 'store_scan.dart';
+import 'scan_confirmation.dart';
 import 'storefront.dart';
 import 'password_recovery.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -76,13 +77,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  await refresh();
  });
  final r=result;if(!mounted||r==null)return;
- await showModalBottomSheet<void>(context:context,useSafeArea:true,showDragHandle:true,builder:(ctx)=>SingleChildScrollView(child:Padding(padding:const EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,children:[
- Icon(r['status']=='welcome'?Icons.celebration_outlined:Icons.hourglass_top,color:cobalt,size:54),
- const SizedBox(height:12),Text(shop,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:22)),
- Text(r['status']=='welcome'?((r['points'] as num? ?? 0)>0?'+${r['points']} points de bienvenue':'Carte retrouvée · bonus déjà reçu'):'Achat en attente de validation',style:const TextStyle(fontSize:18,fontWeight:FontWeight.bold)),
- const SizedBox(height:8),Text(r['status']=='welcome'?((r['points'] as num? ?? 0)>0?'Votre carte est créée.':'Votre carte est disponible. Le bonus de bienvenue est attribué une seule fois par email et par commerce.'):'Présentez cet écran au commerçant. Il valide l’achat et choisit les points.',textAlign:TextAlign.center),
- const SizedBox(height:12),FilledButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Terminé'))
- ]))));
+ await showScanConfirmation(context,shop,r);
  }finally{scanning=false;}
  }
  Future<void> scanHistory()async=>run(()async{

@@ -26,6 +26,13 @@ class PrivateBridge(private val context: Context) {
   channel.setMethodCallHandler{call,result->
    try {
     when(call.method){
+     "openFacebook"->{
+      val url=call.argument<String>("url")?:""
+      val uri=Uri.parse(url)
+      val hosts=setOf("facebook.com","www.facebook.com","m.facebook.com","web.facebook.com","fb.com","www.fb.com","fb.me","www.fb.me")
+      if(url.length>500 || url.any{it.isWhitespace() || it.code<32 || it in "<>\"'\\"} || uri.scheme!="https" || uri.host !in hosts || uri.userInfo!=null || uri.port!=-1 || uri.path.orEmpty().trim('/').isEmpty())result.error("url","Lien Facebook invalide",null)
+      else {context.startActivity(Intent(Intent.ACTION_VIEW,uri).addCategory(Intent.CATEGORY_BROWSABLE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));result.success(true)}
+     }
      "openRelease"->{
       val url=call.argument<String>("url")?:""
       if(!Regex("^https://github\\.com/iheb-haouech/TUNIBIZ/releases/download/v[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/TUNIBIZ-v[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.apk$").matches(url)){result.error("url","Lien invalide",null)}

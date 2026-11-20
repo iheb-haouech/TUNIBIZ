@@ -3,8 +3,21 @@ import base64,hashlib,io,re,secrets,time
 from flask import jsonify,session,send_from_directory,send_file,request
 import qrcode
 from verification import welcome_identity
+from urllib.parse import urlsplit
 
 BASE='https://ihebhaouech.pythonanywhere.com'
+FACEBOOK_HOSTS={'facebook.com','www.facebook.com','m.facebook.com','web.facebook.com','fb.com','www.fb.com','fb.me','www.fb.me'}
+def facebook_url(value):
+ """Only stored, official Facebook HTTPS destinations can follow a scan."""
+ if not isinstance(value,str) or len(value)>500 or any(ch.isspace() or ord(ch)<32 for ch in value) or any(ch in value for ch in '<>"\x27\\'):
+  return None
+ if not value:return ''
+ try:
+  u=urlsplit(value)
+  if u.scheme!='https' or u.hostname not in FACEBOOK_HOSTS or u.username or u.password or u.port or not u.path.strip('/'):
+   return None
+ except ValueError:return None
+ return value
 def digest(v):return hashlib.sha256(v.encode()).hexdigest()
 def image(url):
  b=io.BytesIO();qrcode.make(url).save(b,format='PNG');b.seek(0)
@@ -24,6 +37,9 @@ def install(app,db,payload,merchant,err):
     points INTEGER NOT NULL DEFAULT 0,decided INTEGER);
   CREATE INDEX IF NOT EXISTS scan_queue ON store_scan_requests(shop_id,state,expires);
   CREATE UNIQUE INDEX IF NOT EXISTS scan_one_pending ON store_scan_requests(account_id,shop_id) WHERE state='pending';
+  CREATE TABLE IF NOT EXISTS store_qr_settings(
+    shop_id INTEGER PRIMARY KEY REFERENCES shops(id),facebook_url TEXT NOT NULL DEFAULT '',
+    updated TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
   """)
  def account(c):
   t=session.get('wallet_token')
@@ -38,6 +54,16 @@ def install(app,db,payload,merchant,err):
  def merchant_session(c,sid):
   t=session.get('merchant_token')
   return isinstance(t,str) and c.execute("SELECT 1 FROM merchant_sessions m JOIN users u ON u.id=m.user_id WHERE m.digest=? AND m.expires>? AND u.shop_id=?",(digest(t),int(time.time()),sid)).fetchone()
+ def destination(c,sid):
+  setting=c.execute('SELECT facebook_url FROM store_qr_settings WHERE shop_id=?',(sid,)).fetchone()
+  if setting:return facebook_url(setting['facebook_url']) or ''
+  # Reuse an existing Facebook profile link when the merchant already supplied one.
+  if 'social' in {r['name'] for r in c.execute('PRAGMA table_info(storefront_profiles)')}:
+   profile=c.execute('SELECT social FROM storefront_profiles WHERE shop_id=?',(sid,)).fetchone()
+   if profile:return facebook_url(profile['social']) or ''
+  return ''
+ def scan_result(c,sid,**values):
+  return jsonify(**values,facebook_url=destination(c,sid))
  @app.get('/qr/download.png')
  def store_download_qr():return image(BASE+'/download')
  @app.get('/join/<slug>')
@@ -50,7 +76,7 @@ def install(app,db,payload,merchant,err):
   with db() as c:
    row=shop(c,slug)
    if not row:return err('Commerce indisponible',404)
-   return jsonify(shop=dict(row))
+   return jsonify(shop={**dict(row),'facebook_url':destination(c,row['id'])})
  @app.post('/api/wallet/store-scan')
  def store_scan():
   p=payload();slug=p.get('slug')
@@ -80,17 +106,17 @@ def install(app,db,payload,merchant,err):
     identity=welcome_identity(a['email'],app.secret_key)
     c.execute('DELETE FROM welcome_claims WHERE expires<=?',(now,))
     claimed=c.execute('SELECT 1 FROM welcome_claims WHERE identity_digest=? AND shop_id=?',(identity,sid)).fetchone()
-    if claimed:return jsonify(status='welcome',points=0,shop=s['name'],customer_id=cid,welcome_previously_claimed=True),201
+    if claimed:return scan_result(c,sid,status='welcome',points=0,shop=s['name'],customer_id=cid,welcome_previously_claimed=True),201
     c.execute('INSERT INTO welcome_claims VALUES(?,?,?)',(identity,sid,now+90*86400))
     c.execute("INSERT INTO loyalty_ledger(customer_id,kind,points,label,request_key) VALUES(?,'welcome',3,'Bienvenue','welcome:'||?)",(cid,str(cid)))
-    return jsonify(status='welcome',points=3,shop=s['name'],customer_id=cid),201
+    return scan_result(c,sid,status='welcome',points=3,shop=s['name'],customer_id=cid),201
    pending=c.execute("SELECT id,expires FROM store_scan_requests WHERE account_id=? AND shop_id=? AND state='pending'",(aid,sid)).fetchone()
-   if pending:return jsonify(status='pending',id=pending['id'],expires=pending['expires'],shop=s['name'],duplicate=True)
+   if pending:return scan_result(c,sid,status='pending',id=pending['id'],expires=pending['expires'],shop=s['name'],duplicate=True)
    # Avoid rapid rescan immediately after a completed request.
    if c.execute("SELECT 1 FROM store_scan_requests WHERE account_id=? AND shop_id=? AND decided>? LIMIT 1",(aid,sid,now-30)).fetchone():return err('Attendez 30 secondes avant une nouvelle demande',429)
    rid=secrets.token_urlsafe(18)
    c.execute("INSERT INTO store_scan_requests(id,account_id,shop_id,customer_id,created,expires) VALUES(?,?,?,?,?,?)",(rid,aid,sid,cid,now,now+300))
-   return jsonify(status='pending',id=rid,expires=now+300,shop=s['name']),201
+   return scan_result(c,sid,status='pending',id=rid,expires=now+300,shop=s['name']),201
  @app.get('/api/wallet/store-scans')
  def store_scan_history():
   with db() as c:
@@ -104,7 +130,17 @@ def install(app,db,payload,merchant,err):
   with db() as c:
    r=c.execute('SELECT slug,name FROM shops WHERE id=?',(sid,)).fetchone()
   url=BASE+'/join/'+r['slug'];b=io.BytesIO();qrcode.make(url).save(b,format='PNG')
-  return jsonify(shop=r['name'],url=url,download_url=BASE+'/download',png=base64.b64encode(b.getvalue()).decode())
+  with db() as c:target=destination(c,sid)
+  return jsonify(shop=r['name'],url=url,facebook_url=target,download_url=BASE+'/download',png=base64.b64encode(b.getvalue()).decode())
+ @app.post('/api/crm/store-qr/settings')
+ def store_qr_settings():
+  sid=merchant();p=payload();target=facebook_url(p.get('facebook_url'))
+  if target is None:return err('Saisissez le lien HTTPS de la page Facebook du commerce, ou laissez le champ vide.')
+  with db() as c:
+   c.execute('BEGIN IMMEDIATE')
+   if not active(c,sid) or not merchant_session(c,sid):return err('Connexion commerçant requise',401)
+   c.execute('INSERT INTO store_qr_settings(shop_id,facebook_url) VALUES(?,?) ON CONFLICT(shop_id) DO UPDATE SET facebook_url=excluded.facebook_url,updated=CURRENT_TIMESTAMP',(sid,target))
+  return jsonify(ok=True,facebook_url=target)
  @app.get('/api/crm/store-scans')
  def store_queue():
   sid=merchant()

@@ -1,1 +1,19 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Rejoindre un commerce — TUNIBIZ</title><link rel="stylesheet" href="/static/crm.css"><link rel="stylesheet" href="/static/wallet.css"><script src="/static/analytics.js"></script></head><body><header><a class="brand" href="/">TUNIBIZ</a><nav><a href="/download">Application</a><a href="/wallet">Portefeuille</a><a href="/crm">Business</a></nav></header><main class="wrap"><section class="wallet-hero"><span class="eyebrow">TUNIBIZ LOYALTY</span><h1 id="shop-name">Bienvenue</h1><p>3 points de bienvenue lors de votre première inscription au commerce. Pour vos prochains achats, le commerçant valide les points.</p></section><section class="panel"><p id="shop-city"></p><p>Connectez votre compte TUNIBIZ puis confirmez le scan. Vous pouvez utiliser le Web ou télécharger l’application et rescanner le QR du commerce.</p><p><a id="join" class="biz-link" href="/wallet">Continuer vers mon portefeuille</a></p><p><a href="/download">Télécharger TUNIBIZ</a></p><p id="status" role="status"></p></section></main><script src="/static/store-join.js"></script></body></html>
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Votre scan fidélité — TUNIBIZ</title><link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/store-join.css"><script src="/static/analytics.js" defer></script></head>
+<body><header><a class="brand" href="/">TUNI<span>BIZ</span></a><a href="/wallet">Mon compte</a></header>
+<main><span class="eyebrow">VOTRE FIDÉLITÉ, SIMPLEMENT</span><h1 id="shop-name">Bienvenue</h1><p id="shop-city"></p>
+<section class="card"><div class="scan-icon" aria-hidden="true">✓</div><h2>Un scan, vos avantages.</h2>
+<p>Confirmez votre passage avec votre compte TUNIBIZ. Les points de bienvenue sont attribués une seule fois. Les points d’achat sont validés par le commerçant.</p>
+<p id="facebook-info" hidden>Après confirmation, découvrez aussi la page Facebook de ce commerce.</p>
+<button id="confirm-scan" type="button" hidden>Confirmer mon scan</button>
+<a id="join" class="button" href="/wallet" hidden>Me connecter et poursuivre le scan</a>
+<p id="status" role="status" aria-live="polite">Chargement du commerce…</p>
+<a href="/download" class="secondary">Télécharger l’application Android</a></section>
+<p class="privacy">Votre compte identifie votre fidélité. Ouvrir Facebook ne crédite pas de points supplémentaires et ne publie rien sur votre compte Facebook.</p></main>
+<dialog id="scan-confirmation" aria-labelledby="confirmation-title"><div class="scan-icon" aria-hidden="true">✓</div>
+<h2 id="confirmation-title">Scan enregistré</h2><p id="scan-result" role="status"></p><p id="redirect-status" aria-live="polite"></p>
+<a id="facebook-link" class="button" rel="noreferrer" hidden>Ouvrir Facebook</a>
+<button id="stay" class="secondary" type="button">Rester dans TUNIBIZ</button><a class="secondary" href="/wallet">Voir mes points</a></dialog>
+<script src="/static/store-join.js"></script></body></html>

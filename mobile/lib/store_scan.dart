@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'api.dart';
 import 'checkout_scanner.dart';
+import 'scan_confirmation.dart';
 
 String? storeSlug(String value){
  final u=Uri.tryParse(value.trim());
@@ -39,11 +40,21 @@ class _StoreApprovalsState extends State<StoreApprovals>{
  try{final d=await widget.api.call('/crm/store-scan/decide',{'id':r['id'],'action':approved?'approve':'reject','points':points});if(mounted)setState(()=>msg=approved?'Validé : +'+d['points'].toString()+' points':'Demande refusée');}
  catch(e){if(mounted)setState(()=>msg=e.toString());}finally{if(mounted){setState(()=>busy=false);await refresh();}}
  }
+ Future<void> configureFacebook()async{
+  String input=qr?['facebook_url']?.toString()??'';String? error;
+  final value=await showDialog<String>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setLocal)=>AlertDialog(
+   title:const Text('Facebook après le scan'),content:Column(mainAxisSize:MainAxisSize.min,children:[const Text('Le client voit la confirmation TUNIBIZ avant l’ouverture de votre page Facebook. Laissez vide pour désactiver.'),TextFormField(initialValue:input,onChanged:(value)=>input=value,keyboardType:TextInputType.url,decoration:InputDecoration(labelText:'Lien HTTPS Facebook',errorText:error))]),
+   actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Annuler')),FilledButton(onPressed:(){final target=input.trim();if(target.isNotEmpty&&facebookDestination(target)==null){setLocal(()=>error='Lien Facebook HTTPS requis');return;}Navigator.pop(ctx,target);},child:const Text('Enregistrer'))],
+  )));if(value==null||!mounted)return;setState(()=>busy=true);
+  try{await widget.api.call('/crm/store-qr/settings',{'facebook_url':value});if(mounted)setState((){qr=null;msg='Lien enregistré. Votre QR reste identique.';});}
+  catch(e){if(mounted)setState(()=>msg=e.toString());}finally{if(mounted){setState(()=>busy=false);await refresh();}}
+ }
  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('QR & validations'),actions:[IconButton(onPressed:busy?null:refresh,icon:const Icon(Icons.refresh))]),body:ListView(padding:const EdgeInsets.all(18),children:[
  if(busy)const LinearProgressIndicator(),if(msg.isNotEmpty)Text(msg),if(qr!=null)...[
  Text(qr!['shop'].toString(),style:Theme.of(context).textTheme.headlineSmall),
  const Text('QR fixe du commerce · 3 points de bienvenue'),
  Center(child:Image.memory(base64Decode(qr!['png']),width:240,height:240)),
+ OutlinedButton.icon(onPressed:busy?null:configureFacebook,icon:const Icon(Icons.open_in_new),label:const Text('Facebook après le scan')),
  OutlinedButton.icon(onPressed:()=>Clipboard.setData(ClipboardData(text:qr!['url'].toString())),icon:const Icon(Icons.copy),label:const Text('Copier le lien du commerce')),
  OutlinedButton.icon(onPressed:()=>Clipboard.setData(ClipboardData(text:qr!['download_url'].toString())),icon:const Icon(Icons.download),label:const Text('Copier le lien général de téléchargement'))],
  const SizedBox(height:18),const Text('Demandes d’achat',style:TextStyle(fontWeight:FontWeight.bold,fontSize:22)),
