@@ -35,7 +35,10 @@ void main(){
   }
   Future<void> snap(String name)async{
    await tester.pump(const Duration(milliseconds:500));
-   await binding.takeScreenshot(name);screenshots.add(name);
+   final shot=await binding.takeScreenshot(name);
+   final file=File('/sdcard/Android/data/tn.tunibiz.tunibiz_mobile/files/screenshots/$name.png');
+   await file.parent.create(recursive:true);await file.writeAsBytes(shot);
+   binding.reportData?.remove('screenshots');screenshots.add(name);binding.reportData!['capture_names']=screenshots;
   }
   Future<void> screen(Widget page)async{
    await tester.pumpWidget(const SizedBox());await tester.pump();
@@ -87,7 +90,7 @@ void main(){
    await screen(Nearby(apiOverride:client));await settle();await snap('13-nearby-sans-gps');
    await screen(CommerceBusiness(apiOverride:merchant));await waitFor(find.text('Se connecter'));await snap('13b-connexion-business');
    await field('Adresse e-mail','merchant.qa@example.test');await field('Mot de passe','QA-Merchant-060!');
-   await tap('Se connecter');await waitFor(find.text('Actions rapides'));
+   await tap('Se connecter');await waitFor(find.byType(NavigationBar));
 
    final fixedQr=await merchant.call('/crm/store-qr');
    final qrFile=File('/sdcard/Android/data/tn.tunibiz.tunibiz_mobile/files/qa-partner.png');
@@ -109,7 +112,7 @@ void main(){
    await waitFor(find.text('Validé : +5 points'));await snap('17-scan-valide');
    final duplicate=await merchant.call('/crm/store-scan/decide',{'id':pending.first['id'],'action':'approve','points':5});expect(duplicate['duplicate'],true);
    expect((await client.call('/wallet'))['cards'].firstWhere((c)=>c['shop_id']==4)['points'],55);
-   await screen(CommerceBusiness(apiOverride:merchant));await waitFor(find.text('Actions rapides'));await snap('18-business-dashboard');
+   await screen(CommerceBusiness(apiOverride:merchant));await waitFor(find.byType(NavigationBar));await snap('18-business-dashboard');
    await nav('Clients');await field('Téléphone du client','20123456');await tap('Rechercher');await snap('19-clients-recherche');
    await tap('Ajouter des points');await snap('20-attribution-points');await field('Motif','Recette Android +20 TEST');await tap('Valider');
    await settle(1500);expect((await client.call('/wallet'))['cards'].firstWhere((c)=>c['shop_id']==4)['points'],75);
