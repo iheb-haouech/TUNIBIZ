@@ -1,3 +1,4 @@
+import 'app_language.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'premium.dart';
@@ -16,9 +17,9 @@ class _CheckoutScannerState extends State<CheckoutScanner>{
  if(finished||!mounted)return;
  for(final b in capture.barcodes){final v=b.rawValue;if(v!=null&&(widget.accept??validCheckoutToken)(v)){finished=true;Navigator.pop(context,v);return;}}
  }
- @override Widget build(BuildContext context)=>Scaffold(backgroundColor:ink,appBar:AppBar(title:Text(widget.title)),body:SafeArea(child:Column(children:[
- const Padding(padding:EdgeInsets.all(16),child:Text('Placez le QR dans le cadre. La caméra ne sert qu’à lire le code.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white))),
+ @override Widget build(BuildContext context)=>Scaffold(backgroundColor:ink,appBar:AppBar(title:AppText(widget.title)),body:SafeArea(child:Column(children:[
+ const Padding(padding:EdgeInsets.all(16),child:AppText('Placez le QR dans le cadre. La caméra ne sert qu’à lire le code.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white))),
  Expanded(child:Padding(padding:const EdgeInsets.all(18),child:ClipRRect(borderRadius:BorderRadius.circular(22),child:MobileScanner(controller:controller,onDetect:detected)))),
- Padding(padding:const EdgeInsets.all(18),child:FilledButton(onPressed:()=>Navigator.pop(context),child:const Text('Annuler / saisir le code manuellement')))
+ Padding(padding:const EdgeInsets.all(18),child:FilledButton(onPressed:()=>Navigator.pop(context),child:const AppText('Annuler / saisir le code manuellement')))
  ])));
 }

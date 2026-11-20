@@ -1,3 +1,4 @@
+import 'app_language.dart';
 import 'package:flutter/material.dart';
 import 'premium.dart';
 
@@ -32,15 +33,15 @@ class RewardTile extends StatelessWidget{
    SizedBox(height:142,width:double.infinity,child:Stack(fit:StackFit.expand,children:[
     if(asset!=null)Image.asset(asset,fit:BoxFit.cover)else Container(decoration:const BoxDecoration(gradient:LinearGradient(colors:[ink,Color(0xFF143D50)])),child:const Center(child:Icon(Icons.card_giftcard_rounded,color:mint,size:52))),
     const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Colors.transparent,Color(0x99071321)]))),
-    Positioned(top:12,left:12,child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),decoration:BoxDecoration(color:available?mint:ink,borderRadius:BorderRadius.circular(20)),child:Text(available?'DISPONIBLE':'OBJECTIF',style:TextStyle(color:available?ink:Colors.white,fontSize:11,fontWeight:FontWeight.w800)))),
-    Positioned(bottom:12,right:12,child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20)),child:Text(cost.toString()+' pts',style:const TextStyle(color:ink,fontWeight:FontWeight.w800)))),
-    if(asset!=null)const Positioned(bottom:16,left:12,child:Text('Photo illustrative',style:TextStyle(color:Colors.white,fontSize:10)))
+    Positioned(top:12,left:12,child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),decoration:BoxDecoration(color:available?mint:ink,borderRadius:BorderRadius.circular(20)),child:AppText(available?'DISPONIBLE':'OBJECTIF',style:TextStyle(color:available?ink:Colors.white,fontSize:11,fontWeight:FontWeight.w800)))),
+    Positioned(bottom:12,right:12,child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20)),child:AppText(cost.toString()+' pts',style:const TextStyle(color:ink,fontWeight:FontWeight.w800)))),
+    if(asset!=null)const Positioned(bottom:16,left:12,child:AppText('Photo illustrative',style:TextStyle(color:Colors.white,fontSize:10)))
    ])),
    Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-    Text(reward['title'].toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800,color:ink)),
-    if(desc.isNotEmpty)...[const SizedBox(height:5),Text(desc,style:const TextStyle(fontSize:13,color:muted,height:1.4))],
+    AppText(reward['title'].toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800,color:ink)),
+    if(desc.isNotEmpty)...[const SizedBox(height:5),AppText(desc,style:const TextStyle(fontSize:13,color:muted,height:1.4))],
     const SizedBox(height:12),
-    Row(children:[Expanded(child:Text(available?'À demander en caisse':'Encore '+remaining.toString()+' points',style:TextStyle(fontSize:13,fontWeight:FontWeight.w700,color:available?const Color(0xFF087F78):muted))),Text((progress*100).round().toString()+' %',style:const TextStyle(fontSize:12,color:muted))]),
+    Row(children:[Expanded(child:AppText(available?'À demander en caisse':'Encore '+remaining.toString()+' points',style:TextStyle(fontSize:13,fontWeight:FontWeight.w700,color:available?const Color(0xFF087F78):muted))),AppText((progress*100).round().toString()+' %',style:const TextStyle(fontSize:12,color:muted))]),
     const SizedBox(height:9),
     TweenAnimationBuilder<double>(tween:Tween(begin:0,end:progress),duration:reduced?Duration.zero:const Duration(milliseconds:550),curve:Curves.easeOutCubic,builder:(_,v,__)=>ClipRRect(borderRadius:BorderRadius.circular(12),child:LinearProgressIndicator(value:v,minHeight:7,backgroundColor:const Color(0xFFE5EDF3),color:available?const Color(0xFF087F78):cobalt)))
    ]))

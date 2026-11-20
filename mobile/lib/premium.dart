@@ -1,3 +1,4 @@
+import 'app_language.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
@@ -9,9 +10,9 @@ class PremiumRing extends StatelessWidget {
  @override Widget build(BuildContext context)=>SizedBox(width:226,height:226,child:Stack(alignment:Alignment.center,children:[
   Positioned.fill(child:CustomPaint(painter:_RingPainter(signedIn?(points/math.max(1,goal)).clamp(0,1).toDouble():0))),
   Column(mainAxisSize:MainAxisSize.min,children:[
-   Text(signedIn?points.toString():'—',style:const TextStyle(fontSize:52,color:Colors.white,fontWeight:FontWeight.w800,letterSpacing:-2)),
-   const Text('POINTS',style:TextStyle(color:mint,fontSize:11,fontWeight:FontWeight.w700,letterSpacing:3)),
-   const SizedBox(height:8),Text(signedIn?'Objectif '+goal.toString():'Votre fidélité',style:const TextStyle(color:Colors.white60,fontSize:12))
+   AppText(signedIn?points.toString():'—',style:const TextStyle(fontSize:52,color:Colors.white,fontWeight:FontWeight.w800,letterSpacing:-2)),
+   const AppText('POINTS',style:TextStyle(color:mint,fontSize:11,fontWeight:FontWeight.w700,letterSpacing:3)),
+   const SizedBox(height:8),AppText(signedIn?'Objectif '+goal.toString():'Votre fidélité',style:const TextStyle(color:Colors.white60,fontSize:12))
   ])
  ]));
 }
@@ -38,13 +39,13 @@ class PremiumHero extends StatelessWidget{
  @override Widget build(BuildContext context)=>Container(width:double.infinity,decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[ink,Color(0xFF10263C),ink])),child:Stack(children:[
   Positioned.fill(child:CustomPaint(painter:_Pattern())),
   Padding(padding:const EdgeInsets.fromLTRB(24,18,24,28),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-   Row(children:[Container(width:38,height:38,decoration:BoxDecoration(color:cobalt,borderRadius:BorderRadius.circular(12)),alignment:Alignment.center,child:const Text('T.',style:TextStyle(fontWeight:FontWeight.w900,fontSize:23,color:Colors.white))),const SizedBox(width:10),const Text('TUNIBIZ',style:TextStyle(color:Colors.white,fontSize:18,fontWeight:FontWeight.w800,letterSpacing:2)),const Spacer(),const Icon(Icons.auto_awesome_outlined,color:mint)]),
-   const SizedBox(height:23),const Text('VOTRE UNIVERS DE FIDÉLITÉ',style:TextStyle(color:mint,fontSize:10,letterSpacing:2,fontWeight:FontWeight.w700)),
-   const SizedBox(height:7),Text(name,style:const TextStyle(color:Colors.white,fontSize:32,fontWeight:FontWeight.w800,letterSpacing:-1)),
-   Text(shop,style:const TextStyle(color:Colors.white60,fontSize:13)),const SizedBox(height:9),
+   Row(children:[Container(width:38,height:38,decoration:BoxDecoration(color:cobalt,borderRadius:BorderRadius.circular(12)),alignment:Alignment.center,child:const AppText('T.',style:TextStyle(fontWeight:FontWeight.w900,fontSize:23,color:Colors.white))),const SizedBox(width:10),const AppText('TUNIBIZ',style:TextStyle(color:Colors.white,fontSize:18,fontWeight:FontWeight.w800,letterSpacing:2)),const Spacer(),const Icon(Icons.auto_awesome_outlined,color:mint)]),
+   const SizedBox(height:23),const AppText('VOTRE UNIVERS DE FIDÉLITÉ',style:TextStyle(color:mint,fontSize:10,letterSpacing:2,fontWeight:FontWeight.w700)),
+   const SizedBox(height:7),AppText(name,style:const TextStyle(color:Colors.white,fontSize:32,fontWeight:FontWeight.w800,letterSpacing:-1)),
+   AppText(shop,style:const TextStyle(color:Colors.white60,fontSize:13)),const SizedBox(height:9),
    Center(child:PremiumRing(points:points,goal:goal,signedIn:signedIn)),
-   Center(child:Text(description,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white70,fontSize:14,height:1.5))),
-   const SizedBox(height:19),Center(child:FilledButton(onPressed:onAction,style:FilledButton.styleFrom(backgroundColor:mint,foregroundColor:ink,padding:const EdgeInsets.symmetric(horizontal:28,vertical:15)),child:Text(action,style:const TextStyle(fontWeight:FontWeight.w800))))
+   Center(child:AppText(description,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white70,fontSize:14,height:1.5))),
+   const SizedBox(height:19),Center(child:FilledButton(onPressed:onAction,style:FilledButton.styleFrom(backgroundColor:mint,foregroundColor:ink,padding:const EdgeInsets.symmetric(horizontal:28,vertical:15)),child:AppText(action,style:const TextStyle(fontWeight:FontWeight.w800))))
   ]))
  ]));
 }
@@ -58,18 +59,18 @@ class FeatureTile extends StatelessWidget {
  @override Widget build(BuildContext context)=>Material(color:Colors.white,borderRadius:BorderRadius.circular(20),clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
   SizedBox(height:156,width:double.infinity,child:Stack(fit:StackFit.expand,children:[
    Image.asset(asset,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Container(color:ink,child:const Icon(Icons.card_giftcard,color:mint,size:48))),
-   Positioned(left:12,top:12,child:Container(padding:const EdgeInsets.symmetric(horizontal:11,vertical:7),decoration:BoxDecoration(color:ink,borderRadius:BorderRadius.circular(30)),child:Text(tag,style:const TextStyle(color:Colors.white,fontSize:11,fontWeight:FontWeight.bold))))
+   Positioned(left:12,top:12,child:Container(padding:const EdgeInsets.symmetric(horizontal:11,vertical:7),decoration:BoxDecoration(color:ink,borderRadius:BorderRadius.circular(30)),child:AppText(tag,style:const TextStyle(color:Colors.white,fontSize:11,fontWeight:FontWeight.bold))))
   ])),
-  Padding(padding:const EdgeInsets.all(16),child:Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(color:ink,fontWeight:FontWeight.w800,fontSize:18)),const SizedBox(height:5),Text(subtitle,style:const TextStyle(color:muted,fontSize:13,height:1.4))])),const SizedBox(width:12),const Icon(Icons.arrow_forward_rounded,color:cobalt)]))
+  Padding(padding:const EdgeInsets.all(16),child:Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[AppText(title,style:const TextStyle(color:ink,fontWeight:FontWeight.w800,fontSize:18)),const SizedBox(height:5),AppText(subtitle,style:const TextStyle(color:muted,fontSize:13,height:1.4))])),const SizedBox(width:12),const Icon(Icons.arrow_forward_rounded,color:cobalt)]))
  ])));
 }
 class PremiumNav extends StatelessWidget{
  final int index;final ValueChanged<int> onSelected;
  const PremiumNav({super.key,required this.index,required this.onSelected});
  @override Widget build(BuildContext context)=>NavigationBar(backgroundColor:Colors.white,indicatorColor:const Color(0xFFE1F9F5),selectedIndex:index,onDestinationSelected:onSelected,destinations:const [
-  NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home_rounded,color:ink),label:'Accueil'),
-  NavigationDestination(icon:Icon(Icons.card_giftcard_outlined),label:'Fidélité'),
-  NavigationDestination(icon:Icon(Icons.radar),label:'Nearby'),
-  NavigationDestination(icon:Icon(Icons.storefront_outlined),label:'Business')
+  AppNavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home_rounded,color:ink),label:'Accueil'),
+  AppNavigationDestination(icon:Icon(Icons.card_giftcard_outlined),label:'Fidélité'),
+  AppNavigationDestination(icon:Icon(Icons.radar),label:'Nearby'),
+  AppNavigationDestination(icon:Icon(Icons.storefront_outlined),label:'Business')
  ]);
 }

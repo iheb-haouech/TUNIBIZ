@@ -1,3 +1,4 @@
+import 'app_language.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -115,9 +116,9 @@ class _PushPreferencesState extends State<PushPreferences> {
   Widget build(BuildContext context) => Column(children: [
     SwitchListTile(
       secondary: const Icon(Icons.notifications_outlined),
-      title: const Text('Notifications du portefeuille'),
-      subtitle: const Text('Alertes facultatives sur les achats et validations.'),
+      title: const AppText('Notifications du portefeuille'),
+      subtitle: const AppText('Alertes facultatives sur les achats et validations.'),
       value: enabled, onChanged: busy ? null : change),
-    if (status.isNotEmpty) Text(status),
+    if (status.isNotEmpty) AppText(status),
   ]);
 }

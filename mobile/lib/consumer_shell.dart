@@ -1,3 +1,4 @@
+import 'app_language.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -50,10 +51,10 @@ class _ConsumerShellState extends State<ConsumerShell> {
     try {
       if (await permissions.invokeMethod<bool>('onboardingNeeded') == true && mounted) {
         final allow = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-          title: const Text('Bienvenue sur TUNIBIZ'),
-          content: const Text('La localisation approximative sert à découvrir les offres Nearby. Les notifications sont facultatives. Vous pouvez refuser et garder votre portefeuille et le scanner QR.'),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Plus tard')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Configurer'))]));
+          title: const AppText('Bienvenue sur TUNIBIZ'),
+          content: const AppText('La localisation approximative sert à découvrir les offres Nearby. Les notifications sont facultatives. Vous pouvez refuser et garder votre portefeuille et le scanner QR.'),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const AppText('Plus tard')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const AppText('Configurer'))]));
         if (allow == true) {
           await permissions.invokeMethod<bool>('permissionNotifications');
           if (mounted) await permissions.invokeMethod<bool>('permissionLocation');
@@ -106,50 +107,50 @@ class _ConsumerShellState extends State<ConsumerShell> {
     final profile = wallet?['profile'] as Map?;
     final cards = wallet?['cards'] as List? ?? [];
     return Scaffold(backgroundColor: paper,
-      appBar: AppBar(title: const Text('TUNIBIZ'), actions: [
+      appBar: AppBar(title: const AppText('TUNIBIZ'), actions: [
         IconButton(tooltip: 'Actualiser', onPressed: loading ? null : load, icon: const Icon(Icons.refresh)),
         IconButton(tooltip: 'Espace commerçant', onPressed: () => Navigator.push(context,
           MaterialPageRoute(builder: (_) => widget.businessBuilder())), icon: const Icon(Icons.storefront_outlined))]),
       body: RefreshIndicator(onRefresh: load, child: ListView(padding: const EdgeInsets.all(18), children: [
         if (loading) const LinearProgressIndicator(),
-        if (error.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text(error, style: const TextStyle(color: Colors.red))),
+        if (error.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: AppText(error, style: const TextStyle(color: Colors.red))),
         Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(
           gradient: const LinearGradient(colors: [ink, Color(0xFF174158)]), borderRadius: BorderRadius.circular(24)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('VOS COMMERCES. VOS AVANTAGES.', style: TextStyle(color: mint, fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
+            const AppText('VOS COMMERCES. VOS AVANTAGES.', style: TextStyle(color: mint, fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
             const SizedBox(height: 14),
-            Text(profile == null ? 'Le commerce local vous récompense.' : 'Bonjour ${profile['name']}',
+            AppText(profile == null ? 'Le commerce local vous récompense.' : 'Bonjour ${profile['name']}',
               style: const TextStyle(color: Colors.white, fontSize: 29, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
-            Text(profile == null ? 'Un compte gratuit pour vos cartes de fidélité, vos coupons et les offres proches.' : '${cards.length} carte(s) de fidélité. Vos points restent propres à chaque commerce.', style: const TextStyle(color: Colors.white70)),
+            AppText(profile == null ? 'Un compte gratuit pour vos cartes de fidélité, vos coupons et les offres proches.' : '${cards.length} carte(s) de fidélité. Vos points restent propres à chaque commerce.', style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 20),
-            FilledButton.icon(onPressed: () => select(2), icon: const Icon(Icons.qr_code_scanner), label: const Text('Scanner un commerce')),
-            TextButton(onPressed: () => select(4), child: Text(profile == null ? 'Ouvrir mon portefeuille' : 'Voir mes cartes', style: const TextStyle(color: mint)))
+            FilledButton.icon(onPressed: () => select(2), icon: const Icon(Icons.qr_code_scanner), label: const AppText('Scanner un commerce')),
+            TextButton(onPressed: () => select(4), child: AppText(profile == null ? 'Ouvrir mon portefeuille' : 'Voir mes cartes', style: const TextStyle(color: mint)))
           ])),
         if (cards.isNotEmpty) ...[
-          const SizedBox(height: 24), const Text('Mes commerces', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: ink)),
+          const SizedBox(height: 24), const AppText('Mes commerces', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: ink)),
           for (final card in cards.take(4)) Card(child: ListTile(
             leading: const Icon(Icons.loyalty_outlined, color: cobalt),
-            title: Text(card['shop'].toString()), subtitle: Text(card['archived'] == 1 ? 'Commerce archivé · points conservés' : card['city'].toString()),
-            trailing: Text('${card['points']} pts', style: const TextStyle(fontWeight: FontWeight.bold, color: cobalt)), onTap: () => select(4)))
+            title: AppText(card['shop'].toString()), subtitle: AppText(card['archived'] == 1 ? 'Commerce archivé · points conservés' : card['city'].toString()),
+            trailing: AppText('${card['points']} pts', style: const TextStyle(fontWeight: FontWeight.bold, color: cobalt)), onTap: () => select(4)))
         ],
         const SizedBox(height: 24),
-        Row(children: [const Expanded(child: Text('À découvrir', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: ink))),
-          TextButton(onPressed: () => select(1), child: const Text('Tout voir'))]),
-        if (!loading && stores.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text('Les établissements actifs apparaîtront ici.')),
+        Row(children: [const Expanded(child: AppText('À découvrir', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: ink))),
+          TextButton(onPressed: () => select(1), child: const AppText('Tout voir'))]),
+        if (!loading && stores.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: AppText('Les établissements actifs apparaîtront ici.')),
         for (final store in stores.take(3)) Padding(padding: const EdgeInsets.only(bottom: 12), child: Card(clipBehavior: Clip.antiAlias,
           child: InkWell(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StorePage(api: api, id: store['id'] as int))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [StoreImage(store['cover'], height: 140),
-              ListTile(title: Text(store['name'].toString(), style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(store['city'].toString()), trailing: const Icon(Icons.chevron_right))])))),
-        if (offers.isNotEmpty) ...[const SizedBox(height: 12), const Text('Offres à découvrir', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: ink)),
+              ListTile(title: AppText(store['name'].toString(), style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: AppText(store['city'].toString()), trailing: const Icon(Icons.chevron_right))])))),
+        if (offers.isNotEmpty) ...[const SizedBox(height: 12), const AppText('Offres à découvrir', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: ink)),
           for (final offer in offers.take(4)) Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Padding(padding: const EdgeInsets.only(top: 12), child: Text(offer['shop_name'].toString(), style: const TextStyle(fontWeight: FontWeight.bold))),
-            StoreListing(offer: offer, action: TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StorePage(api: api, id: offer['shop_id'] as int))), child: const Text('Voir dans la vitrine')))])],
+            Padding(padding: const EdgeInsets.only(top: 12), child: AppText(offer['shop_name'].toString(), style: const TextStyle(fontWeight: FontWeight.bold))),
+            StoreListing(offer: offer, action: TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StorePage(api: api, id: offer['shop_id'] as int))), child: const AppText('Voir dans la vitrine')))])],
         const SizedBox(height: 14),
-        OutlinedButton.icon(onPressed: () => select(3), icon: const Icon(Icons.radar), label: const Text('Découvrir les offres Nearby')),
+        OutlinedButton.icon(onPressed: () => select(3), icon: const Icon(Icons.radar), label: const AppText('Découvrir les offres Nearby')),
         const SizedBox(height: 14), const UpdateEntry(),
-        TextButton(onPressed: () async { final value = await UsageAnalytics.preferences(context); if (value != null) {await UsageAnalytics.change(value);if(value){await UsageAnalytics.screen(const ['home','stores','scanner','nearby','wallet'][index]);unawaited(Api.usage(const ['home_view','stores_open','wallet_open','nearby_open','wallet_open'][index]));}} }, child: const Text('Préférences de statistiques')),
-        const Text('Compte consommateur gratuit · Points séparés par commerce.', style: TextStyle(color: muted, fontSize: 12)), const SizedBox(height: 16)
+        TextButton(onPressed: () async { final value = await UsageAnalytics.preferences(context); if (value != null) {await UsageAnalytics.change(value);if(value){await UsageAnalytics.screen(const ['home','stores','scanner','nearby','wallet'][index]);unawaited(Api.usage(const ['home_view','stores_open','wallet_open','nearby_open','wallet_open'][index]));}} }, child: const AppText('Préférences de statistiques')),
+        const AppText('Compte consommateur gratuit · Points séparés par commerce.', style: TextStyle(color: muted, fontSize: 12)), const SizedBox(height: 16)
       ])));
   }
   @override
@@ -165,10 +166,10 @@ class _ConsumerShellState extends State<ConsumerShell> {
     ]), bottomNavigationBar: NavigationBar(backgroundColor: Colors.white, indicatorColor: const Color(0xFFE1F9F5),
       selectedIndex: index, onDestinationSelected: select, labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       destinations: const [
-        NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Accueil'),
-        NavigationDestination(icon: Icon(Icons.storefront_outlined), label: 'Établissements'),
-        NavigationDestination(icon: CircleAvatar(backgroundColor: cobalt, foregroundColor: Colors.white, child: Icon(Icons.qr_code_scanner)), label: 'Scanner'),
-        NavigationDestination(icon: Icon(Icons.radar), label: 'Nearby'),
-        NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), label: 'Portefeuille')
+        AppNavigationDestination(icon: Icon(Icons.home_outlined), label: 'Accueil'),
+        AppNavigationDestination(icon: Icon(Icons.storefront_outlined), label: 'Établissements'),
+        AppNavigationDestination(icon: CircleAvatar(backgroundColor: cobalt, foregroundColor: Colors.white, child: Icon(Icons.qr_code_scanner)), label: 'Scanner'),
+        AppNavigationDestination(icon: Icon(Icons.radar), label: 'Nearby'),
+        AppNavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), label: 'Portefeuille')
       ])));
 }

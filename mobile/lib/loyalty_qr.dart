@@ -1,3 +1,4 @@
+import 'app_language.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,18 +21,18 @@ class _LoyaltyQrState extends State<LoyaltyQr>{
  catch(e){if(mounted)setState(()=>error='Impossible de générer le code. Vérifiez votre connexion.');}
  finally{if(mounted)setState(()=>loading=false);}
  }
- @override Widget build(BuildContext context){final valid=pass!=null&&remaining>0;return Scaffold(backgroundColor:ink,appBar:AppBar(backgroundColor:ink,foregroundColor:Colors.white,title:const Text('Ma carte sécurisée')),body:SafeArea(child:ListView(padding:const EdgeInsets.all(24),children:[
- Text(widget.shop,textAlign:TextAlign.center,style:const TextStyle(color:mint,fontSize:14,fontWeight:FontWeight.w700,letterSpacing:1)),
- const SizedBox(height:20),const Text('Présentez votre carte',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontSize:29,fontWeight:FontWeight.w800)),
- const SizedBox(height:10),const Text('Identification en caisse uniquement. Aucun mot de passe ni donnée personnelle dans ce QR.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white70)),
+ @override Widget build(BuildContext context){final valid=pass!=null&&remaining>0;return Scaffold(backgroundColor:ink,appBar:AppBar(backgroundColor:ink,foregroundColor:Colors.white,title:const AppText('Ma carte sécurisée')),body:SafeArea(child:ListView(padding:const EdgeInsets.all(24),children:[
+ AppText(widget.shop,textAlign:TextAlign.center,style:const TextStyle(color:mint,fontSize:14,fontWeight:FontWeight.w700,letterSpacing:1)),
+ const SizedBox(height:20),const AppText('Présentez votre carte',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontSize:29,fontWeight:FontWeight.w800)),
+ const SizedBox(height:10),const AppText('Identification en caisse uniquement. Aucun mot de passe ni donnée personnelle dans ce QR.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white70)),
  const SizedBox(height:28),
  Center(child:Container(width:246,height:246,padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),boxShadow:[BoxShadow(color:mint.withValues(alpha:.2),blurRadius:28)]),child:loading?const Center(child:CircularProgressIndicator()):valid?CustomPaint(painter:QrMatrixPainter((pass!['matrix'] as List).map((r)=>(r as List).cast<bool>()).toList())):const Center(child:Icon(Icons.qr_code_2,size:78,color:muted)))),
  const SizedBox(height:20),
- Text(valid?'Expire dans '+remaining.toString()+' s':loading?'Génération en cours…':'Code indisponible ou expiré',textAlign:TextAlign.center,style:const TextStyle(color:mint,fontWeight:FontWeight.w700)),
- if(valid)...[const SizedBox(height:12),LinearProgressIndicator(value:remaining/90,backgroundColor:Colors.white12,color:mint),const SizedBox(height:12),OutlinedButton.icon(onPressed:()async{await Clipboard.setData(ClipboardData(text:pass!['token']));if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Code temporaire copié')));},icon:const Icon(Icons.copy,color:mint),label:const Text('Copier le code temporaire',style:TextStyle(color:mint)))],
- if(error.isNotEmpty)Text(error,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white70)),
- const SizedBox(height:18),FilledButton(onPressed:loading?null:refresh,style:FilledButton.styleFrom(backgroundColor:mint,foregroundColor:ink),child:const Text('Générer un nouveau code')),
- const SizedBox(height:16),const Text('Chaque code est valable 90 secondes et utilisable une seule fois, dans le commerce de votre carte.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white54,fontSize:12))
+ AppText(valid?'Expire dans '+remaining.toString()+' s':loading?'Génération en cours…':'Code indisponible ou expiré',textAlign:TextAlign.center,style:const TextStyle(color:mint,fontWeight:FontWeight.w700)),
+ if(valid)...[const SizedBox(height:12),LinearProgressIndicator(value:remaining/90,backgroundColor:Colors.white12,color:mint),const SizedBox(height:12),OutlinedButton.icon(onPressed:()async{await Clipboard.setData(ClipboardData(text:pass!['token']));if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:AppText('Code temporaire copié')));},icon:const Icon(Icons.copy,color:mint),label:const AppText('Copier le code temporaire',style:TextStyle(color:mint)))],
+ if(error.isNotEmpty)AppText(error,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white70)),
+ const SizedBox(height:18),FilledButton(onPressed:loading?null:refresh,style:FilledButton.styleFrom(backgroundColor:mint,foregroundColor:ink),child:const AppText('Générer un nouveau code')),
+ const SizedBox(height:16),const AppText('Chaque code est valable 90 secondes et utilisable une seule fois, dans le commerce de votre carte.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white54,fontSize:12))
  ])));}
 }
 class QrMatrixPainter extends CustomPainter{

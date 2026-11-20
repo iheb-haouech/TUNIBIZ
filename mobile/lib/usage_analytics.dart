@@ -1,3 +1,4 @@
+import 'app_language.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -45,7 +46,7 @@ class UsageAnalytics {
   try{await google!.logScreenView(screenName:name);}catch(_){}
  }
  static Future<bool?> preferences(BuildContext context)async=>showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-  title:const Text('Statistiques facultatives'),
-  content:const Text('Autoriser TUNIBIZ et Google Analytics à mesurer les fonctions utilisées ? Les événements ne contiennent ni email, mot de passe, QR, identifiant de compte ni GPS. La publicité reste désactivée. Vous pouvez modifier ce choix à tout moment et utiliser les services en refusant.'),
-  actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Plus tard')),TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Refuser')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Accepter'))]));
+  title:const AppText('Statistiques facultatives'),
+  content:const AppText('Autoriser TUNIBIZ et Google Analytics à mesurer les fonctions utilisées ? Les événements ne contiennent ni email, mot de passe, QR, identifiant de compte ni GPS. La publicité reste désactivée. Vous pouvez modifier ce choix à tout moment et utiliser les services en refusant.'),
+  actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const AppText('Plus tard')),TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const AppText('Refuser')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const AppText('Accepter'))]));
 }

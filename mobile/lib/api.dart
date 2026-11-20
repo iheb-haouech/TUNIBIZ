@@ -5,8 +5,9 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'usage_analytics.dart';
 import 'session_vault.dart';
+import 'secure_cache.dart';
 
-const baseUrl = String.fromEnvironment('API_BASE', defaultValue: 'http://10.0.2.2:8877');
+const baseUrl = String.fromEnvironment('API_BASE', defaultValue: 'https://ihebhaouech.pythonanywhere.com');
 class SessionExpired implements Exception {
   @override
   String toString() => 'Session expiree. Reconnectez-vous.';
@@ -35,6 +36,7 @@ class Api {
     signedIn = false;
     cookies.clear();
     csrf = '';
+    await SecureCache.clear(scope);
     if (scope != null) await SessionVault.write(scope!, null);
   }
   bool _expired(String path, int status) => status == 401 &&
@@ -113,7 +115,7 @@ class Api {
         if (c.maxAge == 0) { cookies.remove(c.name); } else { cookies[c.name] = c; }
       }
       if (scope != null) {
-        if (['/wallet/login', '/wallet/register', '/google/login', '/login', '/loyalty/login'].contains(path)) signedIn = true;
+        if (['/wallet/login', '/wallet/register', '/google/login', '/login', '/loyalty/login'].contains(path)) {await SecureCache.clear(scope);signedIn = true;}
         if (['/wallet/logout', '/wallet/delete', '/logout'].contains(path) || (path == '/loyalty/logout' && scope == 'legacy')) {
           await clearLocal();
         } else if (signedIn && cookies['session'] != null) {
@@ -149,6 +151,11 @@ class Api {
       }
     }
     return signedIn;
+  }
+  Future<Map<String,dynamic>> cached(String path)async{
+    if(!path.startsWith('/')||path.startsWith('/admin'))throw ArgumentError('Cache path');
+    try{final data=await call(path);await SecureCache.put(scope,path,data);return data;}
+    on ApiUnavailable {final data=await SecureCache.read(scope,path);if(data!=null)return data;rethrow;}
   }
   Future<void> init() async {
     await restore();

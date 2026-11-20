@@ -22,8 +22,9 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity: FlutterActivity() {
+ private val privateBridge by lazy { PrivateBridge(this) }
  private val photoPicker by lazy { StorePhotoPicker(this) }
- override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){super.onActivityResult(requestCode,resultCode,data);photoPicker.onResult(requestCode,resultCode,data)}
+ override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){super.onActivityResult(requestCode,resultCode,data);photoPicker.onResult(requestCode,resultCode,data);privateBridge.onActivityResult(requestCode,resultCode,data)}
  private var locationResult: MethodChannel.Result?=null
  private var permissionOnlyResult: MethodChannel.Result?=null
  private var notificationResult: MethodChannel.Result?=null
@@ -37,7 +38,7 @@ class MainActivity: FlutterActivity() {
  override fun configureFlutterEngine(engine:FlutterEngine){
   super.configureFlutterEngine(engine)
   photoPicker.attach(MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/photo"))
-  PrivateBridge(this).attach(MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/private"))
+  privateBridge.attach(MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/private"))
   MethodChannel(engine.dartExecutor.binaryMessenger,"tn.tunibiz/nearby").setMethodCallHandler{call,result->
    when(call.method){
     "onboardingNeeded"->result.success(!getSharedPreferences("tn_permissions",MODE_PRIVATE).getBoolean("asked",false))
