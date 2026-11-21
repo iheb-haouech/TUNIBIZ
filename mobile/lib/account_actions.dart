@@ -19,9 +19,10 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> with Widg
  @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);status();}
  @override void dispose(){WidgetsBinding.instance.removeObserver(this);link.dispose();super.dispose();}
  @override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed&&!busy)status();}
+ Future<void> showMessage(String value)async{if(!mounted)return;setState(()=>message=value);ScaffoldMessenger.of(context).clearSnackBars();ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:AppText(value)));}
  Future<void> run(Future<void> Function() work)async{
   if(busy)return;setState((){busy=true;message='';});
-  try{await work();}catch(e){if(mounted)setState(()=>message=e.toString().replaceFirst('Exception: ',''));}
+  try{await work();}catch(e){await showMessage(e.toString().replaceFirst('Exception: ',''));}
   finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> readStatus()async{final d=await widget.api.call('/verification/status');if(mounted)setState((){verified=d['verified']==true;delivery=d['delivery_enabled']==true;});}
@@ -32,7 +33,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> with Widg
  });
  Future<void> confirm()async{
   final token=accountActionToken(link.text,'/verify-email');
-  if(token==null){setState(()=>message='Collez le lien de confirmation TUNIBIZ reçu par e-mail.');return;}
+  if(token==null){await showMessage('Collez le lien de confirmation TUNIBIZ reçu par e-mail.');return;}
   await run(()async{
    if(widget.api.csrf.isEmpty)await widget.api.init();await widget.api.call('/verification/confirm',{'token':token});await readStatus();
    if(!mounted)return;link.clear();setState(()=>message=verified?'':'Le lien a été traité. Vérifiez le compte connecté.');

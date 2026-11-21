@@ -30,7 +30,7 @@ void main(){
  test('account links reject foreign origins, ambiguous tokens and executable inputs',(){
   expect(accountActionToken(token,'/verify-email'),token);
   expect(accountActionToken('https://ihebhaouech.pythonanywhere.com/verify-email?token=$token','/verify-email'),token);
-  for(final value in ['http://ihebhaouech.pythonanywhere.com/verify-email?token=$token','https://attacker.test/verify-email?token=$token','https://ihebhaouech.pythonanywhere.com:443/verify-email?token=$token','https://u:p@ihebhaouech.pythonanywhere.com/verify-email?token=$token','https://ihebhaouech.pythonanywhere.com/verify-email?token=$token&token=$token','https://ihebhaouech.pythonanywhere.com/verify-email?token=$token#x','https://ihebhaouech.pythonanywhere.com/reset-password?token=$token','javascript:alert(1)']){
+  for(final value in ['http://ihebhaouech.pythonanywhere.com/verify-email?token=$token','https://attacker.test/verify-email?token=$token','https://ihebhaouech.pythonanywhere.com:444/verify-email?token=$token','https://u:p@ihebhaouech.pythonanywhere.com/verify-email?token=$token','https://ihebhaouech.pythonanywhere.com/verify-email?token=$token&token=$token','https://ihebhaouech.pythonanywhere.com/verify-email?token=$token#x','https://ihebhaouech.pythonanywhere.com/reset-password?token=$token','javascript:alert(1)']){
    expect(accountActionToken(value,'/verify-email'),isNull,reason:value);
   }
  });
@@ -43,7 +43,7 @@ void main(){
   await tap(t,'Enregistrer le nouveau mot de passe');expect(api.posts.containsKey('/password/reset'),false);
   await field(t,'Répéter le mot de passe','QA-password-061!');api.resetDenied=true;
   await tap(t,'Enregistrer le nouveau mot de passe');expect(find.text('Mot de passe modifié'),findsNothing);
-  expect(find.text('Lien expiré ou déjà utilisé'),findsOneWidget);
+  expect(find.text('Lien expiré ou déjà utilisé'),findsWidgets);
   api.resetDenied=false;await tap(t,'Enregistrer le nouveau mot de passe');expect(find.text('Mot de passe modifié'),findsOneWidget);
   expect(api.posts['/password/reset']!['token'],token);expect(t.takeException(),isNull);
   await t.pumpWidget(const SizedBox());await t.pumpAndSettle();

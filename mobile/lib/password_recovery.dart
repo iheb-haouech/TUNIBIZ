@@ -18,19 +18,20 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage>{
  final link=TextEditingController(),password=TextEditingController(),confirmation=TextEditingController();
  bool busy=false,changed=false;String message='';
  @override void dispose(){email.dispose();link.dispose();password.dispose();confirmation.dispose();if(widget.apiOverride==null)api.close();super.dispose();}
+ Future<void> showMessage(String value)async{if(!mounted)return;setState(()=>message=value);ScaffoldMessenger.of(context).clearSnackBars();ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:AppText(value)));}
  Future<void> run(Future<void> Function() work)async{
   if(busy)return;FocusManager.instance.primaryFocus?.unfocus();setState((){busy=true;message='';});
-  try{if(api.csrf.isEmpty)await api.init();await work();}catch(e){if(mounted)setState(()=>message=e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>busy=false);}
+  try{if(api.csrf.isEmpty)await api.init();await work();}catch(e){await showMessage(e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> request()async{
-  if(!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email.text.trim())||!['consumer','merchant'].contains(widget.kind)){setState(()=>message='Vérifiez votre adresse e-mail.');return;}
+  if(!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email.text.trim())||!['consumer','merchant'].contains(widget.kind)){await showMessage('Vérifiez votre adresse e-mail.');return;}
   await run(()async{final d=await api.call('/password/request',{'kind':widget.kind,'email':email.text.trim()});if(mounted)setState(()=>message=d['message']?.toString()??'Consultez votre boîte e-mail.');});
  }
  Future<void> reset()async{
   final token=accountActionToken(link.text,'/reset-password');
-  if(token==null){setState(()=>message='Collez le lien de réinitialisation TUNIBIZ reçu par e-mail.');return;}
-  if(password.text.length<12||password.text.length>128){setState(()=>message='Choisissez un mot de passe de 12 à 128 caractères.');return;}
-  if(password.text!=confirmation.text){setState(()=>message='Les deux mots de passe doivent être identiques.');return;}
+  if(token==null){await showMessage('Collez le lien de réinitialisation TUNIBIZ reçu par e-mail.');return;}
+  if(password.text.length<12||password.text.length>128){await showMessage('Choisissez un mot de passe de 12 à 128 caractères.');return;}
+  if(password.text!=confirmation.text){await showMessage('Les deux mots de passe doivent être identiques.');return;}
   await run(()async{await api.call('/password/reset',{'token':token,'password':password.text});if(!mounted)return;link.clear();password.clear();confirmation.clear();setState((){changed=true;message='';});});
  }
  @override Widget build(BuildContext context)=>PopScope(canPop:!busy,child:Scaffold(appBar:AppBar(title:const AppText('Récupération de compte')),body:ListView(padding:const EdgeInsets.all(22),children:[
