@@ -40,7 +40,7 @@ void main(){
   Future<void> tap(String text)async{
    final f=find.text(text);
    if(f.evaluate().isEmpty){await tester.scrollUntilVisible(f,250,scrollable:find.byType(Scrollable).hitTestable().last,maxScrolls:25);}
-   await waitFor(f);await tester.ensureVisible(f.last);await tester.pump(const Duration(milliseconds:200));await tester.tap(f.last);await settle();
+   await waitFor(f);await tester.ensureVisible(f.last,alignment:0.4);await tester.pump(const Duration(milliseconds:200));await tester.tap(f.last);await settle();
   }
   Future<void> snap(String name)async{
    await tester.pump(const Duration(milliseconds:500));
@@ -202,6 +202,7 @@ void main(){
     await snap('29-client-hors-connexion');
     await tester.tap(find.byType(FloatingActionButton));await settle();
     expect(find.text('Connectez-vous pour enregistrer une opération.'),findsOneWidget);
+    await tester.pump(const Duration(seconds:5)); // Let the asserted transient banner leave the action hit area.
     await nav('Profil');await tap('Déconnexion');await waitFor(find.text('Se connecter'));
     expect(await SessionVault.read('wallet'),isNull);await snap('30-deconnexion-client-hors-connexion');
     await screen(CommerceBusiness(apiOverride:merchant));await waitFor(find.text('Hors connexion · dernières données enregistrées'),seconds:40);
