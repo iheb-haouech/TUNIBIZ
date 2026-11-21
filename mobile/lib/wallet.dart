@@ -77,7 +77,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  final info=await api.call('/store/'+slug);if(!mounted)return;
  shop=info['shop']['name'].toString();
  String? facebook=info['shop']['facebook_url']?.toString();
- if(facebook==null){try{final detail=await api.call('/stores/'+info['shop']['id'].toString());facebook=socialLinks(detail['social'])['facebook'];}catch(_){final partial=await MobileRepository(api).publicPartnerById(info['shop']['id'] as int);facebook=socialLinks(partial?['social'])['facebook'];}}
+ if(facebook==null){try{final detail=await api.call('/stores/'+info['shop']['id'].toString());facebook=socialLinks(detail['social'])['facebook'];}catch(_){final id=info['shop']['id'];if(id is int){final partial=await MobileRepository(api).publicPartnerById(id);facebook=socialLinks(partial?['social'])['facebook'];}}}
  if(!mounted||epoch!=api.sessionEpoch||!api.signedIn)return;
  final r=await api.call('/wallet/store-scan',{'slug':slug});
  result={...r,if(facebook!=null)'facebook_url':facebook};

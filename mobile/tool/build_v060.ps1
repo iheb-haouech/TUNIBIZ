@@ -1,4 +1,4 @@
-param([ValidateSet('debug','release')][string]$Mode='release')
+param([ValidateSet('debug','qa','release')][string]$Mode='release')
 $ErrorActionPreference='Stop'
 $dev='E:\TUNIBIZ-Dev'
 $out=if($env:TUNIBIZ_OUTPUT_DIR){$env:TUNIBIZ_OUTPUT_DIR}else{"$dev\v060"}
@@ -52,9 +52,16 @@ try{
  $env:TUNIBIZ_SIGN_PASSWORD=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
  $env:TUNIBIZ_SIGN_KEY_PASSWORD=$env:TUNIBIZ_SIGN_PASSWORD
  $env:TUNIBIZ_SIGN_STORE="$keydir\tunibiz-release.p12";$env:TUNIBIZ_SIGN_ALIAS='tunibiz'
+ if($Mode -eq 'qa'){
+  $env:TUNIBIZ_SIGN_QA='1'
+  Native $flutter @('build','apk','--debug','--no-pub','--target','integration_test/mobile_flow_test.dart','--target-platform','android-x64',("--dart-define-from-file="+$definesFile))
+  Copy-Item "$work\build\app\outputs\flutter-apk\app-debug.apk" "$out\TUNIBIZ-v060-qa-signed.apk" -Force
+ }else{
  Native $flutter @('build','apk','--release','--no-pub','--target-platform','android-arm,android-arm64,android-x64','--dart-define=API_BASE=https://ihebhaouech.pythonanywhere.com',("--dart-define-from-file="+$definesFile))
  Copy-Item "$work\build\app\outputs\flutter-apk\app-release.apk" "$out\TUNIBIZ-v0.6.0-universal.apk" -Force
+ }
 }finally{
  if($ptr -ne [IntPtr]::Zero){[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)}
+ Remove-Item Env:TUNIBIZ_SIGN_QA -ErrorAction SilentlyContinue
  Remove-Item Env:TUNIBIZ_SIGN_PASSWORD,Env:TUNIBIZ_SIGN_KEY_PASSWORD -ErrorAction SilentlyContinue
 }

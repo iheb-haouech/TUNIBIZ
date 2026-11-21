@@ -52,6 +52,9 @@ android {
     }
 
     buildTypes {
+        if (System.getenv("TUNIBIZ_SIGN_QA") == "1" && hasReleaseKey) {
+            getByName("debug").signingConfig = signingConfigs.findByName("production")
+        }
         release {
             signingConfig = signingConfigs.findByName("production")
         }

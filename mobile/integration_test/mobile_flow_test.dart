@@ -1,5 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:tunibiz_mobile/account_actions.dart';
+import 'package:tunibiz_mobile/password_recovery.dart';
+import 'package:tunibiz_mobile/scan_history.dart';
 // Acceptance against a separate database served by tool/qa_server.py.
-// Never points test writes at production. Google/email transport/FCM are not mocked as success.
+// No production test writes. Mail tokens are fixtures; Google/FCM observations are reported separately.
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -24,6 +29,8 @@ void main(){
   final client=Api(scope:'wallet',serverUrl:qa);
   final merchant=Api(scope:'merchant',serverUrl:qa);
   final other=Api(serverUrl:qa);
+  final recovery=Api(serverUrl:qa);
+  Map<String,dynamic> firebaseRegistration={'attempted':false};
   final screenshots=<String>[];
   Future<void> settle([int ms=1000])async{await tester.pump(Duration(milliseconds:ms));}
   Future<void> waitFor(Finder f,{int seconds=35})async{
@@ -55,6 +62,9 @@ void main(){
    final f=find.byWidgetPredicate((w)=>w is TextField&&w.decoration?.labelText==label);
    await waitFor(f);await tester.ensureVisible(f.last);await tester.enterText(f.last,value);await settle(200);
   }
+  Future<Map> fixture(String path,Map<String,dynamic> body)async{
+   final http=HttpClient();try{final request=await http.postUrl(Uri.parse('$qa/__qa__/$path'));request.headers.contentType=ContentType.json;request.headers.set('X-CSRF-Token',client.csrf);request.cookies.addAll(client.cookies.values);request.write(jsonEncode(body));final response=await request.close();expect(response.statusCode,200);return jsonDecode(await utf8.decoder.bind(response).join()) as Map;}finally{http.close();}
+  }
   Future<void> nav(String label)async{await tester.tap(find.descendant(of:find.byType(NavigationBar),matching:find.text(label)).last);await settle();}
   try{
    await SessionVault.write('wallet',null);await SessionVault.write('merchant',null);
@@ -70,12 +80,18 @@ void main(){
    await field('Votre nom','Inscription Android TEST');await field('Email',registered);await field('Mot de passe','QA-Client-060!');
    await tap('Créer mon portefeuille');await waitFor(find.text('Mes points par établissement'));await snap('04b-compte-cree');
    expect((await client.call('/verification/status'))['verified'],false);
-   final transport=HttpClient();final req=await transport.postUrl(Uri.parse('$qa/__qa__/verification'));
-   req.headers.contentType=ContentType.json;req.headers.set('X-CSRF-Token',client.csrf);req.cookies.addAll(client.cookies.values);req.write(jsonEncode({'email':registered}));
-   final response=await req.close();expect(response.statusCode,200);final fixture=jsonDecode(await utf8.decoder.bind(response).join()) as Map;transport.close();expect((fixture['token'] as String).length,43);
-   await client.call('/verification/confirm',{'token':fixture['token']});
+   final verification=await fixture('verification',{'email':registered});
+   await screen(EmailVerificationPage(api:client));await field('Lien de confirmation','https://ihebhaouech.pythonanywhere.com/verify-email?token=${verification['token']}');await tap('Confirmer mon adresse');await waitFor(find.text('Adresse e-mail confirmée'));await snap('04c-confirmation-native');
    expect((await client.call('/verification/status'))['verified'],true);
-   await nav('Profil');await tap('Supprimer mon compte');await field('Confirmer le mot de passe','QA-Client-060!');
+   final reset=await fixture('reset',{'email':registered});
+   await screen(PasswordRecoveryPage(kind:'consumer',initialEmail:registered,apiOverride:recovery));
+   await field('Lien de réinitialisation','https://ihebhaouech.pythonanywhere.com/reset-password?token=${reset['token']}');
+   await field('Nouveau mot de passe','QA-Recovered-061!');await field('Répéter le mot de passe','QA-Recovered-061!');await tap('Enregistrer le nouveau mot de passe');await waitFor(find.text('Mot de passe modifié'));await snap('04d-reinitialisation-native');
+   await expectLater(client.call('/wallet'),throwsA(isA<SessionExpired>()));
+   await expectLater(recovery.call('/password/reset',{'token':reset['token'],'password':'QA-Recovered-061!'}),throwsA(isA<ApiUnavailable>()));
+   await client.init();await client.call('/wallet/login',{'email':registered,'password':'QA-Recovered-061!'});
+   await screen(Home(apiOverride:client,businessApiOverride:merchant));await waitFor(find.text('Mes points par établissement'));
+   await nav('Profil');await tap('Supprimer mon compte');await field('Confirmer le mot de passe','QA-Recovered-061!');
    await tap('Supprimer definitivement');await waitFor(find.text('Se connecter'));
    await field('Email','client.qa@example.test');await field('Mot de passe','QA-Client-060!');
    await tap('Se connecter');await waitFor(find.text('Mes points par établissement'));await snap('05-client-accueil');
@@ -118,6 +134,8 @@ void main(){
    await waitFor(find.text('Validé : +5 points'));await snap('17-scan-valide');
    final duplicate=await merchant.call('/crm/store-scan/decide',{'id':pending.first['id'],'action':'approve','points':5});expect(duplicate['duplicate'],true);
    expect((await client.call('/wallet'))['cards'].firstWhere((c)=>c['shop_id']==4)['points'],55);
+   await screen(ScanHistoryPage(api:merchant));await waitFor(find.text('+5 points'));await snap('17b-historique-scans');
+   expect((await other.call('/mobile/business/scans?shop_id=4'))['requests'],isEmpty);
    await screen(CommerceBusiness(apiOverride:merchant));await waitFor(find.byType(NavigationBar));await snap('18-business-dashboard');
    await nav('Clients');await field('Téléphone du client','20123456');await tap('Rechercher');await snap('19-clients-recherche');
    await tap('Ajouter des points');await snap('20-attribution-points');await field('Motif','Recette Android +20 TEST');await tap('Valider');
@@ -135,6 +153,8 @@ void main(){
    await nav('Vitrine');await snap('23-vitrine-business');
    await tap('Modifier la présentation');await snap('24-formulaire-vitrine');
    await field('Description','Vitrine modifiée par recette Android TEST');await tap('Valider');await settle(1800);
+   await tap('Modifier la catégorie');await tester.tap(find.byType(DropdownButtonFormField<String>).last);await settle();await tap('Café');await tap('Valider');await settle();
+   expect((await merchant.call('/commerce/business'))['profile']['category'],'coffee');await snap('24b-categorie-modifiee');
    await tap('Publier la vitrine');await settle(1800);
    expect((await client.call('/stores/4'))['description'],'Vitrine modifiée par recette Android TEST');
    await screen(StorePage(api:client,id:4));await waitFor(find.text('Vitrine modifiée par recette Android TEST'));await snap('25-vitrine-publiee');
@@ -151,6 +171,20 @@ void main(){
    await waitFor(find.text('76 points'),seconds:45);await snap('27b-actualisation-automatique');
    expect(await const MethodChannel('tn.tunibiz/private').invokeMethod<bool>('loyaltyNotice',{'id':'qa-validated-points','body':'Points TEST confirmés par le serveur.'}),true);
    await client.cached('/commerce/home');await client.cached('/wallet');await client.cached('/commerce/profile');
+   // A real SDK/network observation, never counted as FCM delivery.
+   try{
+    await Firebase.initializeApp();final messaging=FirebaseMessaging.instance;
+    await messaging.requestPermission();await messaging.setAutoInitEnabled(true);
+    final token=await messaging.getToken().timeout(const Duration(seconds:45));
+    if(token==null)throw StateError('No FCM token');
+    const device='06106106106106106106106106106106';
+    await client.call('/push/register',{'device_id':device,'token':token,'consent':true});
+    final receipt=await fixture('push',{'device_id':device});
+    firebaseRegistration={'attempted':true,'registered':receipt['registered']==true,'project':'tunibiz-782f0','delivery_tested':false};
+    await client.call('/push/unregister',{'device_id':device});
+    await messaging.setAutoInitEnabled(false);await messaging.deleteToken();
+   }catch(e){firebaseRegistration={'attempted':true,'registered':false,'error':e.toString(),'delivery_tested':false};}
+   binding.reportData!['firebase_registration']=firebaseRegistration;
    await snap('28-offline-prepare');
    const stagePath='/data/user/0/tn.tunibiz.tunibiz_mobile/cache/qa/qa-network';
    Future<void> networkStage(String phase)async{
@@ -175,10 +209,10 @@ void main(){
     await waitFor(find.text('Se connecter'));expect(await SessionVault.read('merchant'),isNull);await snap('32-deconnexion-business-hors-connexion');
 
    }finally{await networkStage('online');offline.close();}
-   binding.reportData??={};binding.reportData!.addAll({'capture_names':screenshots,'qr_decode':'native ML Kit image','isolated_backend':true,'real_google_login':false,'real_fcm_delivery':false,'native_notification':true,'automatic_balance_refresh':true,'offline_logout_both_roles':true});
+   binding.reportData??={};binding.reportData!.addAll({'capture_names':screenshots,'qr_decode':'native ML Kit image','isolated_backend':true,'real_google_login':false,'real_fcm_delivery':false,'native_notification':true,'automatic_balance_refresh':true,'offline_logout_both_roles':true,'native_email_confirmation':true,'native_password_reset':true,'reset_replay_rejected':true,'reset_revokes_old_session':true,'merchant_scan_history':true,'merchant_category_edited':true,'firebase_registration':firebaseRegistration});
   }finally{
    await tester.pumpWidget(const SizedBox());await settle(100);
-   client.close();merchant.close();other.close();
+   client.close();merchant.close();other.close();recovery.close();
   }
  });
 }
