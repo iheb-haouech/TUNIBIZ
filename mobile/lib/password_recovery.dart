@@ -35,7 +35,7 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage>{
   if(password.text!=confirmation.text){await showMessage('Les deux mots de passe doivent être identiques.');return;}
   await run(()async{await api.call('/password/reset',{'token':token,'password':password.text});if(!mounted)return;link.clear();password.clear();confirmation.clear();setState((){changed=true;message='';});});
  }
- @override Widget build(BuildContext context)=>PopScope(canPop:!busy,child:Scaffold(appBar:AppBar(title:const AppText('Récupération de compte')),body:ListView(padding:const EdgeInsets.all(22),children:[
+ @override Widget build(BuildContext context)=>PopScope(canPop:!busy,child:Scaffold(appBar:AppBar(title:const AppText('Récupération de compte')),body:ListView(padding:const EdgeInsets.fromLTRB(22,22,22,100),children:[
   if(busy)const LinearProgressIndicator(),Icon(changed?Icons.lock_reset:Icons.lock_outline,size:64),const SizedBox(height:18),
   AppText(changed?'Mot de passe modifié':'Retrouvez votre compte',style:const TextStyle(fontSize:26,fontWeight:FontWeight.w800)),const SizedBox(height:14),
   if(message.isNotEmpty)Padding(padding:const EdgeInsets.only(bottom:14),child:AppText(message)),

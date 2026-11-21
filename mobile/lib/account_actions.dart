@@ -39,7 +39,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> with Widg
    if(!mounted)return;link.clear();setState(()=>message=verified?'':'Le lien a été traité. Vérifiez le compte connecté.');
   });
  }
- @override Widget build(BuildContext context)=>PopScope(canPop:!busy,child:Scaffold(appBar:AppBar(title:const AppText('Vérifier mon email')),body:ListView(padding:const EdgeInsets.all(22),children:[
+ @override Widget build(BuildContext context)=>PopScope(canPop:!busy,child:Scaffold(appBar:AppBar(title:const AppText('Vérifier mon email')),body:ListView(padding:const EdgeInsets.fromLTRB(22,22,22,100),children:[
   if(busy)const LinearProgressIndicator(),Icon(verified?Icons.verified_user_outlined:Icons.mark_email_read_outlined,size:64),const SizedBox(height:20),
   AppText(verified?'Adresse e-mail confirmée':'Confirmez votre adresse e-mail',style:const TextStyle(fontSize:26,fontWeight:FontWeight.w800)),const SizedBox(height:14),
   if(message.isNotEmpty)Padding(padding:const EdgeInsets.only(bottom:14),child:AppText(message)),
