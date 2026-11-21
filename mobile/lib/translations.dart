@@ -434,6 +434,18 @@ const translations=<String,List<String>>{
  "Enregistrer le nouveau mot de passe":["Save new password", "سجّل كلمة السر الجديدة"],
  "Une nouvelle information est disponible dans votre portefeuille.":["There is an update in your loyalty wallet.", "فمّا جديد في محفظة الوفاء متاعك."],
 
+ "Historique des scans":["Scan history", "تاريخ السكانات"],
+ "Aucun scan pour ce filtre.":["No scans for this filter.", "ما فماش سكانات بالاختيار هذا."],
+ "Charger la suite":["Load more", "حمّل الباقي"],
+ "Validé":["Approved", "تثبّت"],
+ "Refusé":["Declined", "مرفوض"],
+ "Expiré":["Expired", "وفات صلاحيته"],
+ "Catégorie commerciale":["Business category", "نوع النشاط"],
+ "Précision pour Autres":["Specify Other category", "وضّح نوع النشاط الآخر"],
+ "Modifier la catégorie":["Edit category", "بدّل نوع النشاط"],
+ "Catégorie modifiée":["Category updated", "نوع النشاط تبدّل"],
+ "Précisez le type d’établissement":["Specify the business type", "وضّح نوع المحل"],
+
 };
 final translatedPatterns=<(RegExp,List<String>)>[
  (RegExp(r'^Objectif (\d+)$'),['Goal {1}','الهدف {1}']),

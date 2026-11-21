@@ -1,3 +1,4 @@
+import 'mobile_repository.dart';
 import 'account_actions.dart';
 import 'app_language.dart';
 import 'dart:async';
@@ -54,6 +55,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  await run(()async{await api.init();await api.call(registering?'/wallet/register':'/wallet/login',{'name':name.text.trim(),'email':email.text.trim(),'password':password.text});password.clear();await refresh();await widget.onSessionChanged?.call();});
  }
  Future<void> signInGoogle()async=>run(()async{
+ final epoch=api.sessionEpoch;
  if(!baseUrl.startsWith('https://'))throw Exception('Connexion Google disponible avec le serveur HTTPS configure.');
  await api.init();final cfg=await api.call('/google/config');
  if(cfg['enabled']!=true)throw Exception('Connexion Google non configuree.');
@@ -62,11 +64,12 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  try{await (googleInitialization??=google.initialize(serverClientId:cfg['client_id'] as String));final user=await google.authenticate();token=user.authentication.idToken;}
  on GoogleSignInException catch(e){if(e.code==GoogleSignInExceptionCode.canceled)return;googleInitialization=null;throw const ApiUnavailable('La connexion Google n’a pas abouti. Réessayez ou utilisez votre e-mail.',cacheable:false);}
  catch(_){googleInitialization=null;throw const ApiUnavailable('La connexion Google n’a pas abouti. Réessayez ou utilisez votre e-mail.',cacheable:false);}
+ if(!mounted||epoch!=api.sessionEpoch)return;
  if(token==null)throw Exception('Jeton Google indisponible');
  await api.call('/google/login',{'id_token':token});await refresh();await widget.onSessionChanged?.call();
  });
  Future<void> scanMerchant()async{
- if(scanning||busy||data==null)return;scanning=true;
+ if(scanning||busy||data==null)return;scanning=true;final epoch=api.sessionEpoch;
  try{
  final slug=await (widget.scannerOverride??scanStore)(context);if(!mounted||slug==null)return;
  Map<String,dynamic>? result;String shop='';
@@ -74,7 +77,8 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  final info=await api.call('/store/'+slug);if(!mounted)return;
  shop=info['shop']['name'].toString();
  String? facebook=info['shop']['facebook_url']?.toString();
- if(facebook==null){try{final detail=await api.call('/stores/'+info['shop']['id'].toString());facebook=socialLinks(detail['social'])['facebook'];}catch(_){}}
+ if(facebook==null){try{final detail=await api.call('/stores/'+info['shop']['id'].toString());facebook=socialLinks(detail['social'])['facebook'];}catch(_){final partial=await MobileRepository(api).publicPartnerById(info['shop']['id'] as int);facebook=socialLinks(partial?['social'])['facebook'];}}
+ if(!mounted||epoch!=api.sessionEpoch||!api.signedIn)return;
  final r=await api.call('/wallet/store-scan',{'slug':slug});
  result={...r,if(facebook!=null)'facebook_url':facebook};
  if(r['id']!=null)seen[r['id'].toString()]='pending';

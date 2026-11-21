@@ -4,8 +4,9 @@ import 'app_language.dart';
 import 'api.dart';
 
 Future<void> recoverPassword(BuildContext context,String kind,String initialEmail,{Api? sourceApi})async{
+ final epoch=sourceApi?.sessionEpoch;
  final changed=await Navigator.push<bool>(context,MaterialPageRoute(builder:(_)=>PasswordRecoveryPage(kind:kind,initialEmail:initialEmail,serverUrl:sourceApi?.serverUrl)));
- if(changed==true&&sourceApi!=null)await sourceApi.clearLocal();
+ if(changed==true&&sourceApi!=null&&sourceApi.sessionEpoch==epoch)await sourceApi.clearLocal();
 }
 class PasswordRecoveryPage extends StatefulWidget {
  final String kind,initialEmail;final String? serverUrl;final Api? apiOverride;

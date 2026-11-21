@@ -5,10 +5,10 @@ import 'app_language.dart';
 /// Only an opaque token or the exact HTTPS link sent by TUNIBIZ is accepted.
 String? accountActionToken(String input, String path) {
  final value=input.trim(), pattern=RegExp(r'^[A-Za-z0-9_-]{43}$');
- if(pattern.hasMatch(value))return value;
+ if(value.length==43&&pattern.hasMatch(value))return value;
  final url=Uri.tryParse(value);
  if(url==null||url.scheme!='https'||url.host!='ihebhaouech.pythonanywhere.com'||url.hasPort||url.userInfo.isNotEmpty||url.hasFragment||url.path!=path||url.queryParametersAll.length!=1||url.queryParametersAll['token']?.length!=1)return null;
- final token=url.queryParameters['token'];return token!=null&&pattern.hasMatch(token)?token:null;
+ final token=url.queryParameters['token'];return token!=null&&token.length==43&&pattern.hasMatch(token)?token:null;
 }
 class EmailVerificationPage extends StatefulWidget {
  final Api api;const EmailVerificationPage({super.key,required this.api});

@@ -1,3 +1,5 @@
+import 'mobile_support.dart';
+import 'scan_history.dart';
 import 'app_language.dart';
 import 'dart:convert';
 import 'dart:async';
@@ -25,13 +27,13 @@ class StoreApprovals extends StatefulWidget{
  @override State<StoreApprovals> createState()=>_StoreApprovalsState();
 }
 class _StoreApprovalsState extends State<StoreApprovals>{
- Map<String,dynamic>? qr;List<dynamic> queue=[];bool busy=false;String msg='';
+ late final support=MobileSupport(widget.api);Map<String,dynamic>? qr;List<dynamic> queue=[];bool busy=false;String msg='';
  Timer? poll;bool baseline=false;Set<String> known={};
  @override void initState(){super.initState();refresh();poll=Timer.periodic(const Duration(seconds:15),(_){if(mounted&&WidgetsBinding.instance.lifecycleState==AppLifecycleState.resumed&&ModalRoute.of(context)?.isCurrent==true)refresh(silent:true);});}
  @override void dispose(){poll?.cancel();super.dispose();}
  Future<void> refresh({bool silent=false})async{
  if(busy)return;setState(()=>busy=true);
- try{final q=qr??await widget.api.call('/crm/store-qr'),r=await widget.api.call('/crm/store-scans');if(mounted){final next=r['requests'] as List;final ids=next.map((x)=>x['id'].toString()).toSet();if(baseline&&ids.difference(known).isNotEmpty)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:AppText('Nouvelle demande QR à valider')));known=ids;baseline=true;setState((){qr=q;queue=next;});}}
+ try{await support.load(force:!silent);final q=qr??await widget.api.call('/crm/store-qr'),r=await widget.api.call('/crm/store-scans');if(mounted){final next=r['requests'] as List;final ids=next.map((x)=>x['id'].toString()).toSet();if(baseline&&ids.difference(known).isNotEmpty)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:AppText('Nouvelle demande QR à valider')));known=ids;baseline=true;setState((){qr=q;queue=next;});}}
  catch(e){if(mounted)setState(()=>msg=e.toString());}finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> decide(Map r,bool approved)async{
@@ -53,6 +55,7 @@ class _StoreApprovalsState extends State<StoreApprovals>{
  Row(children:[Expanded(child:OutlinedButton.icon(onPressed:busy?null:()=>exportQr(false),icon:const Icon(Icons.share_outlined),label:const AppText('Partager le QR'))),const SizedBox(width:8),Expanded(child:OutlinedButton.icon(onPressed:busy?null:()=>exportQr(true),icon:const Icon(Icons.download_outlined),label:const AppText('Exporter le QR')))]),
  OutlinedButton.icon(onPressed:()=>Clipboard.setData(ClipboardData(text:qr!['url'].toString())),icon:const Icon(Icons.copy),label:const AppText('Copier le lien du commerce')),
  OutlinedButton.icon(onPressed:()=>Clipboard.setData(ClipboardData(text:qr!['download_url'].toString())),icon:const Icon(Icons.download),label:const AppText('Copier le lien général de téléchargement'))],
+ if(support.has('scan_history'))OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>ScanHistoryPage(api:widget.api))),icon:const Icon(Icons.history),label:const AppText('Historique des scans')),
  const SizedBox(height:18),const AppText('Demandes d’achat',style:TextStyle(fontWeight:FontWeight.bold,fontSize:22)),
  const AppText('Vérifiez l’achat avant validation. Défaut : 1 point, modifiable. Demande valable 5 minutes.'),
  if(queue.isEmpty)const Padding(padding:EdgeInsets.all(16),child:AppText('Aucune demande en attente.')),
