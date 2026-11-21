@@ -10,7 +10,7 @@ Future<void> network(bool available)async{
  for(final kind in ['wifi','data']){await shell(['svc',kind,available?'enable':'disable']);}
 }
 Future<void> main()async{
- final root=Directory('E:/TUNIBIZ-Dev/v060/screenshots');await root.create(recursive:true);
+ final root=Directory('${Platform.environment['TUNIBIZ_OUTPUT_DIR']??'E:/TUNIBIZ-Dev/v060'}/screenshots');await root.create(recursive:true);
  var running=true,previous='',previousCapture='';
  Future<void> watch()async{
   while(running){

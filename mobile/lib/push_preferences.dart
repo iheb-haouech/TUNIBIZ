@@ -53,8 +53,10 @@ class _PushPreferencesState extends State<PushPreferences> {
     return id;
   }
   Future<void> register(String token) async {
-    if (!mounted || !widget.api.signedIn || await SessionVault.read('push_consent') != 'yes') return;
+    if (!mounted || !widget.api.signedIn || await SessionVault.read('push_consent') != 'yes') throw StateError('Session indisponible');
+    final epoch=widget.api.sessionEpoch;
     await widget.api.call('/push/register', {'device_id': await device(), 'token': token, 'consent': true});
+    if(!mounted||!widget.api.signedIn||epoch!=widget.api.sessionEpoch||await SessionVault.read('push_consent')!='yes')throw StateError('Session modifiée');
   }
   Future<void> sync(FirebaseMessaging f) async {
     await f.setAutoInitEnabled(true);
@@ -75,8 +77,9 @@ class _PushPreferencesState extends State<PushPreferences> {
           await sync(f);
           enabled = true;
         } else {
-          await unregister();
           await PushPreferences.clearConsent(widget.api);
+          enabled=false;
+          await unregister();
         }
       }
     } catch (_) { status = 'Notifications temporairement indisponibles.'; }

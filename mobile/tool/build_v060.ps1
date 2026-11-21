@@ -1,6 +1,8 @@
 param([ValidateSet('debug','release')][string]$Mode='release')
 $ErrorActionPreference='Stop'
 $dev='E:\TUNIBIZ-Dev'
+$out=if($env:TUNIBIZ_OUTPUT_DIR){$env:TUNIBIZ_OUTPUT_DIR}else{"$dev\v060"}
+New-Item -ItemType Directory -Force $out | Out-Null
 $src=Split-Path $PSScriptRoot
 $work=Join-Path $dev 'apk-work-060'
 function Native([string]$exe,[string[]]$arguments){
@@ -32,14 +34,14 @@ $fc=$firebase.client | Where-Object {$_.client_info.android_client_info.package_
 if($firebase.project_info.project_id -ne 'tunibiz-782f0' -or !$fc){throw 'Firebase package/project mismatch'}
 Copy-Item "$dev\firebase-google-services.json" "$work\android\app\google-services.json" -Force
 $defines=@{FIREBASE_APP_ID=$fc.client_info.mobilesdk_app_id;FIREBASE_API_KEY=$fc.api_key[0].current_key;FIREBASE_PROJECT_ID=$firebase.project_info.project_id;FIREBASE_SENDER_ID=$firebase.project_info.project_number;FIREBASE_STORAGE_BUCKET=$firebase.project_info.storage_bucket}
-$definesFile="$dev\v060\firebase-public-defines.json"
+$definesFile="$out\firebase-public-defines.json"
 [IO.File]::WriteAllText($definesFile,($defines|ConvertTo-Json),(New-Object Text.UTF8Encoding($false)))
 $flutter="$dev\flutter\bin\flutter.bat"
 Set-Location $work
 Native $flutter @('pub','get','--offline')
 if($Mode -eq 'debug'){
  Native $flutter @('build','apk','--debug','--no-pub','--target','integration_test/mobile_flow_test.dart','--target-platform','android-x64',("--dart-define-from-file="+$definesFile))
- Copy-Item "$work\build\app\outputs\flutter-apk\app-debug.apk" "$dev\v060\TUNIBIZ-v060-qa-debug.apk" -Force
+ Copy-Item "$work\build\app\outputs\flutter-apk\app-debug.apk" "$out\TUNIBIZ-v060-qa-debug.apk" -Force
  exit
 }
 $keydir=Join-Path $env:LOCALAPPDATA 'TUNIBIZ\Signing'
@@ -51,7 +53,7 @@ try{
  $env:TUNIBIZ_SIGN_KEY_PASSWORD=$env:TUNIBIZ_SIGN_PASSWORD
  $env:TUNIBIZ_SIGN_STORE="$keydir\tunibiz-release.p12";$env:TUNIBIZ_SIGN_ALIAS='tunibiz'
  Native $flutter @('build','apk','--release','--no-pub','--target-platform','android-arm,android-arm64,android-x64','--dart-define=API_BASE=https://ihebhaouech.pythonanywhere.com',("--dart-define-from-file="+$definesFile))
- Copy-Item "$work\build\app\outputs\flutter-apk\app-release.apk" "$dev\v060\TUNIBIZ-v0.6.0-universal.apk" -Force
+ Copy-Item "$work\build\app\outputs\flutter-apk\app-release.apk" "$out\TUNIBIZ-v0.6.0-universal.apk" -Force
 }finally{
  if($ptr -ne [IntPtr]::Zero){[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)}
  Remove-Item Env:TUNIBIZ_SIGN_PASSWORD,Env:TUNIBIZ_SIGN_KEY_PASSWORD -ErrorAction SilentlyContinue

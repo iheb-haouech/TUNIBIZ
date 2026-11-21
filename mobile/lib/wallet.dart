@@ -1,3 +1,4 @@
+import 'account_actions.dart';
 import 'app_language.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -47,10 +48,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  final d=await api.call('/wallet');if(mounted)setState(()=>data=d);
  try{final v=await api.call('/verification/status');if(mounted)setState(()=>verification=v);}catch(_){/* Wallet stays available if email delivery is temporarily unavailable. */}
  }
- Future<void> verifyEmail()async=>run(()async{
- final result=await api.call('/verification/request',{});
- if(mounted)setState(()=>message=result['message']?.toString()??'Lien envoyé. Consultez votre boîte mail.');
- });
+ Future<void> verifyEmail()async{final result=await Navigator.push<bool>(context,MaterialPageRoute(builder:(_)=>EmailVerificationPage(api:api)));if(result==true&&mounted)await run(refresh);}
  Future<void> signIn()async{
  if(!email.text.contains('@')||password.text.isEmpty||(registering&&(name.text.trim().isEmpty||password.text.length<12))){setState(()=>message='Vérifiez vos informations. Nouveau compte : 12 caractères minimum.');return;}
  await run(()async{await api.init();await api.call(registering?'/wallet/register':'/wallet/login',{'name':name.text.trim(),'email':email.text.trim(),'password':password.text});password.clear();await refresh();await widget.onSessionChanged?.call();});
@@ -62,6 +60,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  final google=GoogleSignIn.instance;
  String? token;
  try{await (googleInitialization??=google.initialize(serverClientId:cfg['client_id'] as String));final user=await google.authenticate();token=user.authentication.idToken;}
+ on GoogleSignInException catch(e){if(e.code==GoogleSignInExceptionCode.canceled)return;googleInitialization=null;throw const ApiUnavailable('La connexion Google n’a pas abouti. Réessayez ou utilisez votre e-mail.',cacheable:false);}
  catch(_){googleInitialization=null;throw const ApiUnavailable('La connexion Google n’a pas abouti. Réessayez ou utilisez votre e-mail.',cacheable:false);}
  if(token==null)throw Exception('Jeton Google indisponible');
  await api.call('/google/login',{'id_token':token});await refresh();await widget.onSessionChanged?.call();
@@ -125,7 +124,7 @@ class _ConsumerWalletState extends State<ConsumerWallet>{
  FilledButton(onPressed:busy?null:signIn,child:AppText(registering?'Créer mon portefeuille':'Se connecter')),
  OutlinedButton.icon(onPressed:busy?null:signInGoogle,icon:Image.asset('assets/google_g.png',height:20,width:20),label:const AppText('Continuer avec Google')),
  TextButton(onPressed:busy?null:()=>setState((){registering=!registering;message='';password.clear();}),child:AppText(registering?'J’ai déjà un compte':'Créer un compte gratuit')),
- if(!registering)TextButton(onPressed:busy?null:()=>recoverPassword(context,'consumer',email.text),child:const AppText('Mot de passe oublié ?'))
+ if(!registering)TextButton(onPressed:busy?null:()=>recoverPassword(context,'consumer',email.text,sourceApi:api),child:const AppText('Mot de passe oublié ?'))
  ]);
  Widget wallet(Map<String,dynamic> d){
  if(widget.profileOnly)return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[if(message.isNotEmpty)AppText(message),if(verification!=null&&verification!['verified']!=true)OutlinedButton.icon(onPressed:busy?null:verifyEmail,icon:const Icon(Icons.mark_email_read_outlined),label:const AppText('Vérifier mon email')),if(PushPreferences.supported(api))PushPreferences(api:api),if(d['profile']['google_linked']==true)TextButton(onPressed:busy?null:signInGoogle,child:const AppText('Reconnexion Google')),if(widget.showLogout)TextButton(onPressed:logout,child:const AppText('Déconnexion')),TextButton(onPressed:busy?null:deleteAccount,child:const AppText('Supprimer mon compte',style:TextStyle(color:Colors.red)))]);

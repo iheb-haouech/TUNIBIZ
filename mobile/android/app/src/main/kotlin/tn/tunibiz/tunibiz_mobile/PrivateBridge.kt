@@ -82,7 +82,7 @@ class PrivateBridge(private val context: Context) {
        val intent=Intent(context,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
        val pending=PendingIntent.getActivity(context,6,intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
        val notification=if(Build.VERSION.SDK_INT>=26)Notification.Builder(context,"loyalty") else Notification.Builder(context)
-       nm.notify((call.argument<String>("id")?:"loyalty").hashCode(),notification.setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("TUNIBIZ").setContentText(call.argument<String>("body")?:"TUNIBIZ").setVisibility(Notification.VISIBILITY_PRIVATE).setContentIntent(pending).setAutoCancel(true).build());result.success(true)
+       nm.notify((call.argument<String>("id")?:"loyalty").hashCode(),notification.setOnlyAlertOnce(true).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("TUNIBIZ").setContentText(call.argument<String>("body")?:"TUNIBIZ").setVisibility(Notification.VISIBILITY_PRIVATE).setContentIntent(pending).setAutoCancel(true).build());result.success(true)
       }
      }
 

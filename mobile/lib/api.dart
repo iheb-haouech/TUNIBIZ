@@ -78,6 +78,7 @@ class Api {
     HttpClientRequest? req;
     try {
       req = await client.openUrl(body == null ? 'GET' : 'POST', Uri.parse(serverUrl + '/api' + path)).timeout(requestTimeout);
+      current(); // Never send an old operation with a newly signed-in account.
       req.followRedirects = false;
       if (UsageAnalytics.allowed) {
         req.headers.set('X-Tunibiz-Analytics', 'yes');
