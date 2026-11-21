@@ -40,7 +40,7 @@ void main(){
   Future<void> tap(String text)async{
    final f=find.text(text);
    if(f.evaluate().isEmpty){await tester.scrollUntilVisible(f,250,scrollable:find.byType(Scrollable).hitTestable().last,maxScrolls:25);}
-   await waitFor(f);await tester.ensureVisible(f.last,alignment:0.4);await tester.pump(const Duration(milliseconds:200));await tester.tap(f.last);await settle();
+   await waitFor(f);await Scrollable.ensureVisible(tester.element(f.last),alignment:0.4);await tester.pump(const Duration(milliseconds:200));await tester.tap(f.last);await settle();
   }
   Future<void> snap(String name)async{
    await tester.pump(const Duration(milliseconds:500));
